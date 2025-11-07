@@ -8,7 +8,7 @@ alias deactivate 'test $?_OLD_VIRTUAL_PATH != 0 && setenv PATH "$_OLD_VIRTUAL_PA
 # Unset irrelevant variables.
 deactivate nondestructive
 
-setenv VIRTUAL_ENV '/home/durvesh/Desktop/Library management system/Library-Management-System-2025/lms25'
+setenv VIRTUAL_ENV '/home/tomato/Desktop/Projects/Library Management System/Library-Management-System-2025/lms25'
 
 set _OLD_VIRTUAL_PATH="$PATH"
 setenv PATH "$VIRTUAL_ENV/"bin":$PATH"

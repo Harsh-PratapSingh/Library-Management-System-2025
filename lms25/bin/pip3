@@ -1,5 +1,5 @@
 #!/bin/sh
-'''exec' "/home/durvesh/Desktop/Library management system/Library-Management-System-2025/lms25/bin/python3" "$0" "$@"
+'''exec' "/home/tomato/Desktop/Projects/Library Management System/Library-Management-System-2025/lms25/bin/python3" "$0" "$@"
 ' '''
 # -*- coding: utf-8 -*-
 import re

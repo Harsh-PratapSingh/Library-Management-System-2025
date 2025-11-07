@@ -33,7 +33,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV '/home/durvesh/Desktop/Library management system/Library-Management-System-2025/lms25'
+set -gx VIRTUAL_ENV '/home/tomato/Desktop/Projects/Library Management System/Library-Management-System-2025/lms25'
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/"bin $PATH
