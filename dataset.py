@@ -62,7 +62,7 @@ with sqlite3.connect('library.db') as conn:
     for table in tables:
         if table[0] != 'sqlite_sequence':  # Skip internal table
             print(f"- {table[0]}")
-    
+    #hello
     # Display schema for each table
     user_tables = ['users', 'books', 'admin_users']
     for table_name in user_tables:
