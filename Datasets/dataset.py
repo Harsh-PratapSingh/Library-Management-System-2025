@@ -31,7 +31,7 @@ with sqlite3.connect('library.db') as conn:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
-            varified TEXT DEFAULT 'PENDING' CHECK (varified IN ('YES', 'NO', 'PENDING')),
+            verified TEXT DEFAULT 'PENDING' CHECK (verified IN ('YES', 'NO', 'PENDING')),
             borrowed_book_id TEXT DEFAULT 'NIL',
             borrowed_book_date TEXT DEFAULT 'NIL',
             approved_book TEXT DEFAULT 'PENDING' CHECK (approved_book IN ('YES', 'NO', 'PENDING')),
