@@ -23,8 +23,8 @@ with sqlite3.connect('library.db') as conn:
             (admin_username, admin_password, admin_contacts[i], email)
         )
 
-    # 2) Users (50 rows) — contacts exactly 10 digits, mix varified and approved_book, some borrowed, some requested
-    print("\n👥 Inserting 50 users (varified: YES/NO/PENDING) with 10-digit contacts...")
+    # 2) Users (50 rows) — contacts exactly 10 digits, mix verified and approved_book, some borrowed, some requested
+    print("\n👥 Inserting 50 users (verified: YES/NO/PENDING) with 10-digit contacts...")
     user_password = 'userpass'
 
     # build 50 unique 10-digit numbers starting with 7/8/9
@@ -40,13 +40,13 @@ with sqlite3.connect('library.db') as conn:
         email = f'user{i}@library.edu'
         contact = user_contacts[i-1]
 
-        # varified distribution: 20 PENDING, 20 YES, 10 NO
+        # verified distribution: 20 PENDING, 20 YES, 10 NO
         if i <= 20:
-            varified = 'PENDING'
+            verified = 'PENDING'
         elif i <= 40:
-            varified = 'YES'
+            verified = 'YES'
         else:
-            varified = 'NO'
+            verified = 'NO'
 
         # approved_book distribution: first 25 PENDING, next 20 YES, last 5 NO
         if i <= 25:
@@ -65,12 +65,12 @@ with sqlite3.connect('library.db') as conn:
         borrowed_book_id = 'NIL'
         borrowed_book_date = 'NIL'
 
-        users.append((username, user_password, varified, borrowed_book_id, borrowed_book_date,
+        users.append((username, user_password, verified, borrowed_book_id, borrowed_book_date,
                       approved_book, requested_bookid, contact, email))
 
     cursor.executemany("""
         INSERT OR REPLACE INTO users
-        (username, password, varified, borrowed_book_id, borrowed_book_date,
+        (username, password, verified, borrowed_book_id, borrowed_book_date,
          approved_book, requested_bookid, contact, email)
         VALUES (?,?,?,?,?,?,?,?,?)
     """, users)
@@ -215,8 +215,8 @@ with sqlite3.connect('library.db') as conn:
     books_inserted = 0
     isbn_idx = 0
 
-    # choose borrowers only from varified YES users to keep logic clean
-    cursor.execute("SELECT username FROM users WHERE varified = 'YES'")
+    # choose borrowers only from verified YES users to keep logic clean
+    cursor.execute("SELECT username FROM users WHERE verified = 'YES'")
     verified_usernames = [r[0] for r in cursor.fetchall()]
 
     for g in genres:
@@ -269,7 +269,7 @@ with sqlite3.connect('library.db') as conn:
     admin_count = cursor.fetchone()[0]
     cursor.execute("SELECT COUNT(*) FROM users")
     user_count = cursor.fetchone()[0]
-    cursor.execute("SELECT varified, COUNT(*) FROM users GROUP BY varified")
+    cursor.execute("SELECT verified, COUNT(*) FROM users GROUP BY verified")
     var_map = dict(cursor.fetchall())
     cursor.execute("SELECT COUNT(*) FROM books")
     book_count = cursor.fetchone()[0]
