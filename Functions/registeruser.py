@@ -13,7 +13,7 @@ def add_new_user(username, password, contact, email):
             
             # Insert user with all required fields + defaults for other columns
             cursor.execute('''
-                INSERT INTO users (username, password, varified, borrowed_book_id, borrowed_book_date,
+                INSERT INTO users (username, password, verified, borrowed_book_id, borrowed_book_date,
                                    approved_book, requested_bookid, contact, email, join_date)
                 VALUES (?, ?, 'PENDING', 'NIL', 'NIL', 'PENDING', 'NIL', ?, ?, datetime('now'))
             ''', (username, password, contact, email))
