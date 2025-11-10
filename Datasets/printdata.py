@@ -21,7 +21,7 @@ def print_users():
     with sqlite3.connect(DB) as conn:
         cur = conn.cursor()
         cur.execute("""
-            SELECT id, username, varified, approved_book, contact, email,
+            SELECT id, username, verified, approved_book, contact, email,
                    borrowed_book_id, borrowed_book_date, requested_bookid, join_date
             FROM users ORDER BY id
         """)
@@ -30,7 +30,7 @@ def print_users():
         if not rows:
             print("  (none)")
             return
-        print(f"{'ID':<4} {'Username':<15} {'Varified':<9} {'Approved':<9} {'Contact':<12} {'Email':<28} {'BorrowID':<14} {'BorrowDate':<12} {'ReqID':<8} {'Joined':<10}")
+        print(f"{'ID':<4} {'Username':<15} {'verified':<9} {'Approved':<9} {'Contact':<12} {'Email':<28} {'BorrowID':<14} {'BorrowDate':<12} {'ReqID':<8} {'Joined':<10}")
         print("-" * 130)
         v_yes = v_no = v_pend = 0
         with_borrow = with_req = 0
@@ -92,7 +92,7 @@ def print_borrow_links():
         cur = conn.cursor()
         cur.execute("""
             SELECT b.id, b.title, b.isbn, b.check_after, b.available_for,
-                   u.username, u.varified, u.email
+                   u.username, u.verified, u.email
             FROM books b
             LEFT JOIN users u ON u.username = b.available_for
             WHERE b.available = 'NO'
@@ -103,7 +103,7 @@ def print_borrow_links():
         if not rows:
             print("  (none)")
             return
-        print(f"{'BookID':<6} {'Title':<28} {'ISBN':<14} {'Due':<12} {'Borrower':<14} {'Varified':<9} {'Email':<28}")
+        print(f"{'BookID':<6} {'Title':<28} {'ISBN':<14} {'Due':<12} {'Borrower':<14} {'verified':<9} {'Email':<28}")
         print("-" * 120)
         today = date.today()
         overdue = 0
