@@ -2,34 +2,36 @@ import sqlite3
 import datetime
 
 # Connect to the library database
-with sqlite3.connect('library.db') as conn:
+with sqlite3.connect('library.db') as conn:  # Updated path to match dataset.py
     cursor = conn.cursor()
     
-    # Insert 10 admin users
+    # Insert 10 admin users (Fixed - includes email)
     admin_password = 'adminpass'  # In practice, hash this
     for i in range(1, 11):
         admin_username = f'admin{i}'
-        contact = f'admin{i}@example.com'
+        contact = f'98{i}000000{i}'  # Phone number format
+        email = f'admin{i}@library.com'  # Added email
         cursor.execute('''
-            INSERT OR IGNORE INTO admin_users (admin_username, password, contact)
-            VALUES (?, ?, ?)
-        ''', (admin_username, admin_password, contact))
+            INSERT OR IGNORE INTO admin_users (admin_username, password, contact, email)
+            VALUES (?, ?, ?, ?)
+        ''', (admin_username, admin_password, contact, email))
     
-    # Insert 50 users
+    # Insert 50 users (Fixed - includes email)
     user_password = 'userpass'  # In practice, hash this
     for i in range(1, 51):
         username = f'user{i}'
-        contact = f'user{i}@example.com'
+        contact = f'98{i}12345{i}'  # Phone number format
+        email = f'user{i}@library.com'  # Added email
         cursor.execute('''
-            INSERT OR IGNORE INTO users (username, password, contact)
-            VALUES (?, ?, ?)
-        ''', (username, user_password, contact))
+            INSERT OR IGNORE INTO users (username, password, contact, email)
+            VALUES (?, ?, ?, ?)
+        ''', (username, user_password, contact, email))
     
     # Define 10 genres and sample book data
     genres = ['Fiction', 'Non-fiction', 'Science', 'History', 'Fantasy', 'Biography', 'Mystery', 'Romance', 'Technology', 'Self-Help']
     
     # Sample books data: list of tuples (title, author, isbn) for each genre
-    # Fiction books [web:2][web:4]
+    # Fiction books
     fiction_books = [
         ('Don Quixote', 'Miguel de Cervantes', '978-0-14-044909-1'),
         ('Alice\'s Adventures in Wonderland', 'Lewis Carroll', '978-0-14-143976-1'),
@@ -43,7 +45,7 @@ with sqlite3.connect('library.db') as conn:
         ('Jane Eyre', 'Charlotte Brontë', '978-0-14-144114-7')
     ]
     
-    # Non-fiction books (general, e.g., essays, true crime) [web:6]
+    # Non-fiction books (general, e.g., essays, true crime)
     non_fiction_books = [
         ('The Year of Magical Thinking', 'Joan Didion', '978-0-307-27733-6'),
         ('In Cold Blood', 'Truman Capote', '978-0-679-73521-6'),
@@ -57,7 +59,7 @@ with sqlite3.connect('library.db') as conn:
         ('Helter Skelter', 'Vincent Bugliosi', '978-0-393-32223-1')
     ]
     
-    # Science books (popular science) [web:37][web:43]
+    # Science books (popular science)
     science_books = [
         ('A Brief History of Time', 'Stephen Hawking', '978-0-553-38016-3'),
         ('The Elegant Universe', 'Brian Greene', '978-0-375-70811-7'),
@@ -71,7 +73,7 @@ with sqlite3.connect('library.db') as conn:
         ('Lab Girl', 'Hope Jahren', '978-0-385-35267-5')
     ]
     
-    # History books [web:30][web:38][web:44]
+    # History books
     history_books = [
         ('Sapiens: A Brief History of Humankind', 'Yuval Noah Harari', '978-0-06-231609-7'),
         ('Guns, Germs, and Steel', 'Jared Diamond', '978-0-393-31755-8'),
@@ -85,7 +87,7 @@ with sqlite3.connect('library.db') as conn:
         ('Bury My Heart at Wounded Knee', 'Dee Brown', '978-0-8050-8664-3')
     ]
     
-    # Fantasy books [web:33][web:39][web:45]
+    # Fantasy books
     fantasy_books = [
         ('The Hobbit', 'J.R.R. Tolkien', '978-0-618-26811-1'),
         ('The Name of the Wind', 'Patrick Rothfuss', '978-0-349-13542-3'),
@@ -99,7 +101,7 @@ with sqlite3.connect('library.db') as conn:
         ('The Fifth Season', 'N.K. Jemisin', '978-0-316-22929-3')
     ]
     
-    # Biography books [web:40][web:46]
+    # Biography books
     biography_books = [
         ('Steve Jobs', 'Walter Isaacson', '978-1-4516-4853-9'),
         ('Alexander Hamilton', 'Ron Chernow', '978-1-59420-009-0'),
@@ -113,7 +115,7 @@ with sqlite3.connect('library.db') as conn:
         ('Einstein: His Life and Universe', 'Walter Isaacson', '978-0-7432-6475-6')
     ]
     
-    # Mystery books [web:8][web:18]
+    # Mystery books
     mystery_books = [
         ('The Hound of the Baskervilles', 'Arthur Conan Doyle', '978-0-14-043786-7'),
         ('The Murder of Roger Ackroyd', 'Agatha Christie', '978-0-06-207347-1'),
@@ -127,7 +129,7 @@ with sqlite3.connect('library.db') as conn:
         ('The Da Vinci Code', 'Dan Brown', '978-0-307-47765-3')
     ]
     
-    # Romance books [web:9][web:14]
+    # Romance books
     romance_books = [
         ('The Love Hypothesis', 'Ali Hazelwood', '978-0-593-33882-0'),
         ('Beach Read', 'Emily Henry', '978-0-198-69130-1'),
@@ -141,10 +143,10 @@ with sqlite3.connect('library.db') as conn:
         ('Red, White & Royal Blue', 'Casey McQuiston', '978-1-250-31377-6')
     ]
     
-    # Technology books [web:35][web:41][web:47]
+    # Technology books
     technology_books = [
         ('The Innovators', 'Walter Isaacson', '978-1-4767-0869-0'),
-        ('Weapons of Math Destruction', 'Cathy O\'Neil', '978-0-553-41981-4'),
+        ('Weapons of Math Destruction', 'Cathy O\'Neil', '978-0-553-34181-4'),
         ('Superintelligence', 'Nick Bostrom', '978-0-19-967811-2'),
         ('Life 3.0', 'Max Tegmark', '978-1-5247-6173-5'),
         ('The Code Book', 'Simon Singh', '978-0-385-49432-5'),
@@ -155,7 +157,7 @@ with sqlite3.connect('library.db') as conn:
         ('iWoz', 'Steve Wozniak', '978-0-393-33043-4')
     ]
     
-    # Self-Help books [web:36][web:42]
+    # Self-Help books
     self_help_books = [
         ('Atomic Habits', 'James Clear', '978-0-7352-1129-2'),
         ('How to Win Friends and Influence People', 'Dale Carnegie', '978-0-671-02503-7'),
@@ -163,7 +165,7 @@ with sqlite3.connect('library.db') as conn:
         ('Thinking, Fast and Slow', 'Daniel Kahneman', '978-0-374-53355-7'),
         ('Man\'s Search for Meaning', 'Viktor E. Frankl', '978-0-8030-6215-9'),
         ('The Power of Now', 'Eckhart Tolle', '978-1-5773-1480-6'),
-        ('Daring Greatly', 'Brené Brown', '978-0-6-902-30888-1'),
+        ('Daring Greatly', 'Brené Brown', '978-0-06-902308-8'),
         ('The Subtle Art of Not Giving a F*ck', 'Mark Manson', '978-0-06-245771-4'),
         ('Rich Dad Poor Dad', 'Robert T. Kiyosaki', '978-0-7581-5457-3'),
         ('The Four Agreements', 'Don Miguel Ruiz', '978-1-879-13138-1')
@@ -200,7 +202,7 @@ with sqlite3.connect('library.db') as conn:
     print(f"Data inserted successfully: 10 admins, 50 users, and {inserted_count} books across 10 genres.")
 
 # Optional: Display inserted data counts for verification
-with sqlite3.connect('library.db') as conn:
+with sqlite3.connect('library.db') as conn:  # Updated path to match dataset.py
     cursor = conn.cursor()
     
     cursor.execute("SELECT COUNT(*) FROM admin_users")
@@ -221,3 +223,15 @@ with sqlite3.connect('library.db') as conn:
     print("Books per genre:")
     for genre, count in genres_count:
         print(f"  - {genre}: {count}")
+    
+    # Show sample user data (verify email is included)
+    print("\nSample users (first 3):")
+    cursor.execute("SELECT username, email, contact, approved FROM users LIMIT 3")
+    for row in cursor.fetchall():
+        print(f"  - {row[0]} | {row[1]} | {row[2]} | {row[3]}")
+    
+    # Show sample admin data
+    print("\nSample admins (first 2):")
+    cursor.execute("SELECT admin_username, email, contact FROM admin_users LIMIT 2")
+    for row in cursor.fetchall():
+        print(f"  - {row[0]} | {row[1]} | {row[2]}")
