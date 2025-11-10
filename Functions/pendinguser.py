@@ -9,11 +9,11 @@ def show_pending_requests(db_path='library.db'):
         with sqlite3.connect(db_path) as conn:
             cursor = conn.cursor()
             
-            # Get pending users (varified = 'PENDING') - FIXED: correct column name
+            # Get pending users (verified = 'PENDING') - FIXED: correct column name
             cursor.execute("""
                 SELECT id, username, email, contact, join_date 
                 FROM users 
-                WHERE varified = 'PENDING'
+                WHERE verified = 'PENDING'
                 ORDER BY join_date
             """)
             
@@ -47,3 +47,37 @@ def show_pending_requests(db_path='library.db'):
 
 if __name__ == "__main__":
     show_pending_requests()
+
+
+def approve_user(self, username, status):
+    """
+    Approve or deny user. status: 'YES' or 'NO'
+    Returns 1=Success, 2=Error
+    """
+    try:
+        with sqlite3.connect(self.master.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE users SET verified = ? WHERE username = ? AND verified = 'PENDING'",
+                (status, username)
+            )
+            conn.commit()
+            return 1 if cursor.rowcount > 0 else 2
+    except:
+        return 2
+
+
+def get_pending_users(self):
+    """Returns list of pending usernames or empty list"""
+    try:
+        with sqlite3.connect(self.master.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT username FROM users WHERE verified = 'PENDING'")
+            return [row[0] for row in cursor.fetchall()]
+    except:
+        return []
+
+# Usage:
+# approve_user("user25", "YES")  # Approve
+# approve_user("user26", "NO")   # Deny
+# pending = get_pending_users()  # Get list
