@@ -7,7 +7,7 @@ print("=" * 70)
 
 with sqlite3.connect('library.db') as conn:
     cursor = conn.cursor()
-
+    
     # 1) Admin users (10 rows) — contacts exactly 10 digits
     print("\n👨‍💼 Inserting 10 admin users...")
     admin_password = 'adminpass'
@@ -22,24 +22,24 @@ with sqlite3.connect('library.db') as conn:
             "INSERT OR REPLACE INTO admin_users (admin_username, password, contact, email) VALUES (?,?,?,?)",
             (admin_username, admin_password, admin_contacts[i], email)
         )
-
+    
     # 2) Users (50 rows) — contacts exactly 10 digits, mix verified and approved_book, some borrowed, some requested
     print("\n👥 Inserting 50 users (verified: YES/NO/PENDING) with 10-digit contacts...")
     user_password = 'userpass'
-
+    
     # build 50 unique 10-digit numbers starting with 7/8/9
     user_contacts = set()
     while len(user_contacts) < 50:
         contact = str(random.randint(7000000000, 9999999999))
         user_contacts.add(contact)
     user_contacts = list(user_contacts)
-
+    
     users = []
     for i in range(1, 51):
         username = f'user{i}'
         email = f'user{i}@library.edu'
         contact = user_contacts[i-1]
-
+        
         # verified distribution: 20 PENDING, 20 YES, 10 NO
         if i <= 20:
             verified = 'PENDING'
@@ -47,7 +47,7 @@ with sqlite3.connect('library.db') as conn:
             verified = 'YES'
         else:
             verified = 'NO'
-
+        
         # approved_book distribution: first 25 PENDING, next 20 YES, last 5 NO
         if i <= 25:
             approved_book = 'PENDING'
@@ -55,31 +55,31 @@ with sqlite3.connect('library.db') as conn:
             approved_book = 'YES'
         else:
             approved_book = 'NO'
-
+        
         # requested_bookid: ~30% have requests
         requested_bookid = 'NIL'
         if random.random() < 0.30:
             requested_bookid = f'REQ{random.randint(100, 999):03d}'
-
+        
         # placeholders for borrows; will be updated after books are inserted
         borrowed_book_id = 'NIL'
         borrowed_book_date = 'NIL'
-
+        
         users.append((username, user_password, verified, borrowed_book_id, borrowed_book_date,
                       approved_book, requested_bookid, contact, email))
-
+    
     cursor.executemany("""
         INSERT OR REPLACE INTO users
         (username, password, verified, borrowed_book_id, borrowed_book_date,
          approved_book, requested_bookid, contact, email)
         VALUES (?,?,?,?,?,?,?,?,?)
     """, users)
-
+    
     # 3) Books (100 rows) — 10 per genre, unique ISBNs, 7-day loan period for borrowed
     print("\n📚 Inserting 100 books (10 per genre) with unique ISBNs...")
     genres = ['Fiction', 'Non-fiction', 'Science', 'History', 'Fantasy',
               'Biography', 'Mystery', 'Romance', 'Technology', 'Self-Help']
-
+    
     book_data = {
         'Fiction': [
             ('Don Quixote', 'Miguel de Cervantes'),
@@ -120,7 +120,7 @@ with sqlite3.connect('library.db') as conn:
         'History': [
             ('1491', 'Charles C. Mann'),
             ('Bury My Heart at Wounded Knee', 'Dee Brown'),
-            ('The Guns of August', 'Barbara W. Tuchman'),
+            ('The Guns of August', 'Barbara T. Tuchman'),
             ('Team of Rivals', 'Doris Kearns Goodwin'),
             ('The Rise and Fall of the Third Reich', 'William L. Shirer'),
             ("A People's History of the United States", 'Howard Zinn'),
@@ -180,7 +180,7 @@ with sqlite3.connect('library.db') as conn:
         'Technology': [
             ('The Innovators', 'Walter Isaacson'),
             ('Clean Code', 'Robert C. Martin'),
-            ('Weapons of Math Destruction', 'Cathy O’Neil'),
+            ('Weapons of Math Destruction', "Cathy O'Neil"),
             ('Superintelligence', 'Nick Bostrom'),
             ('Life 3.0', 'Max Tegmark'),
             ('The Code Book', 'Simon Singh'),
@@ -202,7 +202,7 @@ with sqlite3.connect('library.db') as conn:
             ('Big Magic', 'Elizabeth Gilbert')
         ],
     }
-
+    
     # pre-generate 100 unique ISBN-13 strings (simple random format)
     isbn_set = set()
     unique_isbns = []
@@ -211,48 +211,54 @@ with sqlite3.connect('library.db') as conn:
         if core not in isbn_set:
             isbn_set.add(core)
             unique_isbns.append(core)
-
+    
     books_inserted = 0
     isbn_idx = 0
-
+    
     # choose borrowers only from verified YES users to keep logic clean
     cursor.execute("SELECT username FROM users WHERE verified = 'YES'")
     verified_usernames = [r[0] for r in cursor.fetchall()]
-
+    
     for g in genres:
         for title, author in book_data[g]:
             isbn = unique_isbns[isbn_idx]
             isbn_idx += 1
-
+            
+            available_for = '7 days'  # Always '7 days' for all books as requested
+            
             # 20% borrowed, 80% available
             if random.random() < 0.20 and verified_usernames:
                 available = 'NO'
+                # Assign borrower for user table sync, but available_for is fixed to '7 days'
                 borrower = random.choice(verified_usernames)
                 # borrow date in past 1–30 days, fixed 7-day loan => check_after = borrow_date + 7
                 borrow_date = datetime.date.today() - datetime.timedelta(days=random.randint(1, 30))
                 check_after = (borrow_date + datetime.timedelta(days=7)).strftime('%Y-%m-%d')
-                available_for = borrower
             else:
                 available = 'YES'
-                available_for = None
                 check_after = None
-
+            
             cursor.execute("""
                 INSERT INTO books (title, available, check_after, available_for, genre, author, isbn, quantity)
                 VALUES (?,?,?,?,?,?,?,?)
             """, (title, available, check_after, available_for, g, author, isbn, 1))
             books_inserted += 1
-
+    
     # sync users.borrowed_book_id and borrowed_book_date from books where borrowed
+    # (using ISBN and random verified users since borrower names are private)
     cursor.execute("""
-        SELECT isbn, available_for, check_after
+        SELECT isbn, check_after
         FROM books
-        WHERE available = 'NO' AND available_for IS NOT NULL AND check_after IS NOT NULL
+        WHERE available = 'NO' AND check_after IS NOT NULL
     """)
     borrowed = cursor.fetchall()
     links_updated = 0
-    for isbn, borrower, check_after in borrowed:
+    for isbn, check_after in borrowed:
         # borrow_date = check_after - 7 days (fixed loan period)
+        if verified_usernames:
+            borrower = random.choice(verified_usernames)
+        else:
+            continue
         due = datetime.datetime.strptime(check_after, '%Y-%m-%d').date()
         borrow_date = (due - datetime.timedelta(days=7)).strftime('%Y-%m-%d')
         cursor.execute("""
@@ -261,9 +267,9 @@ with sqlite3.connect('library.db') as conn:
             WHERE username = ?
         """, (isbn, borrow_date, borrower))
         links_updated += 1
-
+    
     conn.commit()
-
+    
     # Stats
     cursor.execute("SELECT COUNT(*) FROM admin_users")
     admin_count = cursor.fetchone()[0]
