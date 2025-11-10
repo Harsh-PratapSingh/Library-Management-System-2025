@@ -17,7 +17,8 @@ with sqlite3.connect('library.db') as conn:
             password TEXT NOT NULL,  -- Store hashed passwords in practice
             approved TEXT DEFAULT 'PENDING' CHECK (approved IN ('YES', 'NO', 'PENDING')),
             borrowed_book_code TEXT DEFAULT 'NIL',  -- Book code if borrowed, else NIL
-            contact TEXT,
+            contact TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
             join_date TEXT DEFAULT (datetime('now'))
         )
     ''')
@@ -44,7 +45,8 @@ with sqlite3.connect('library.db') as conn:
             admin_username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,  -- Store hashed passwords in practice
             role TEXT DEFAULT 'ADMIN',
-            contact TEXT,
+            contact TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
             created_date TEXT DEFAULT (datetime('now'))
         )
     ''')
