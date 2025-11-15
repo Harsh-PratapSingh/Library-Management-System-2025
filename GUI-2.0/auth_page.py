@@ -89,7 +89,7 @@ class AuthPage(QWidget):
         if query.next():
             self.user_id = query.value(0)
             role = query.value(1)
-            # QMessageBox.information(self, "Login Successful", f"Welcome! Role: {role}")
+            # QMessageBox.information(self, "Login Successful", f"Welcome! Role: {self.user_id}")
             self.login_success.emit(role)  # Emit signal with data
         else:
             QMessageBox.warning(self, "Login Failed", "Incorrect email or password or inactive account.")

@@ -7,7 +7,7 @@ from PyQt6.QtCore import pyqtSignal
 
 import qt_themes
 
-# from database import init_db, seed_data
+from database import init_db, seed_data
 
 import os
 os.environ["QT_SCALE_FACTOR"] = "2.0"  # Increased app scaling

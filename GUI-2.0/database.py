@@ -174,7 +174,7 @@ def generate_books():
     genre_assignments = generate_genres()
     for i in range(0,84):
         title, author, year = sample_books[i]
-        isbn = f"ISBN-{random.randint(10000000, 99999999)}"
+        isbn = f"{random.randint(10000000, 99999999)}"
         categories = genre_assignments[i]
         total_copies = random.randint(1, 10)
         available_copies = total_copies  # Set to total at creation
@@ -208,7 +208,7 @@ def generate_transactions(books_data, users_data):
     transactions = []
     for _ in range(100):
         book_id = random.randint(1, 84)
-        user_id = random.randint(1, 100)
+        user_id = random.randint(51, 95)
         issue_date = (datetime.now() - timedelta(days=random.randint(0, 730))).strftime('%Y-%m-%d')
         due_date = (datetime.strptime(issue_date, '%Y-%m-%d') + timedelta(days=7)).strftime('%Y-%m-%d')
         if random.random() < 0.8:
@@ -266,12 +266,25 @@ def seed_data():
         query.addBindValue(user[5])
         query.addBindValue(1 if user[6] else 0)
         query.addBindValue(user[7])
-        query.exec()
+        if not query.exec():
+            print(query.lastError().text())
     
     # Insert Transactions and adjust available_copies
     transactions = generate_transactions(books, users)
     for trans in transactions:
         book_id, user_id, issue_date, due_date, return_date, fine, status = trans
+
+        query.prepare("SELECT available_copies FROM Books WHERE book_id = ?")
+        query.addBindValue(book_id)
+        query.exec()
+        if not query.exec():
+            print("Query failed: ", query.lastError().text())
+            continue
+        if not query.next():
+            print("No record found for book_id:", book_id)
+            continue
+        if query.value(0) == 0:
+            continue
         # Insert transaction
         query.prepare("INSERT INTO Transactions (book_id, user_id, issue_date, due_date, return_date, fine, status) VALUES (?, ?, ?, ?, ?, ?, ?)")
         query.addBindValue(book_id)
