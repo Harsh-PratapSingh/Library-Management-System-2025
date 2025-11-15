@@ -4,11 +4,11 @@ import random #new import
 from datetime import datetime, timedelta #new import
 
 def init_db():
-    db = QSqlDatabase.addDatabase("QSQLITE")
-    db.setDatabaseName("Library-Management-System-2025/Database/library.db")
-    if not db.open():
-        print("DB error")
-        return False
+    # db = QSqlDatabase.addDatabase("QSQLITE")
+    # db.setDatabaseName("Library-Management-System-2025/Database/library.db")
+    # if not db.open():
+    #     print("DB error")
+    #     return False
     
     query = QSqlQuery()
     
@@ -230,10 +230,10 @@ def generate_transactions(books_data, users_data):
 
 # adding entries to the database using the created lists
 def seed_data():
-    db = QSqlDatabase.addDatabase("QSQLITE")
-    db.setDatabaseName("Library-Management-System-2025/Database/library.db")
-    if not db.open():
-        return False
+    # db = QSqlDatabase.addDatabase("QSQLITE")
+    # db.setDatabaseName("Library-Management-System-2025/Database/library.db")
+    # if not db.open():
+    #     return False
     query = QSqlQuery()
     
     # Clear existing data (using raw SQL for simplicity)
@@ -244,7 +244,7 @@ def seed_data():
     # Insert Books
     books = generate_books()
     for book in books:
-        query.prepare("INSERT INTO Books (title, isbn, author, categories, published_year, total_copies, available_copies) VALUES (?, ?, ?, ?, ?, ?, ?)")
+        query.prepare("INSERT INTO Books (title, isbn, author, category, published_year, total_copies, available_copies) VALUES (?, ?, ?, ?, ?, ?, ?)")
         query.addBindValue(book[0])
         query.addBindValue(book[1])
         query.addBindValue(book[2])
