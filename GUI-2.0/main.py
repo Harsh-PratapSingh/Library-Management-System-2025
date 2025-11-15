@@ -5,13 +5,14 @@ from PyQt6.QtCore import QSize
 
 import qt_themes
 
-from database import init_db  # Import db creation function from database.py file
+from database import seed_data # imported function to add entries
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Library Management System")
-        init_db()  # function call once to create a new database
+        # init_db()
+        seed_data() # function call to add entries
 
 app = QApplication([])
 
