@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QTabWidget, QTableWidget, QTableWidgetItem, 
     QPushButton, QHBoxLayout, QLineEdit, QLabel, QMessageBox, QDialog,
     QFormLayout, QSpinBox, QDialogButtonBox,
-    QListView, QComboBox
+    QListView, QComboBox, QCheckBox
 )
 from PyQt6.QtCore import QDate
 from PyQt6.QtSql import QSqlQuery
@@ -140,7 +140,7 @@ class AdminPage(QWidget):
         appr_search_row = QHBoxLayout()
         appr_search_row.addWidget(QLabel("User Email:"))
         self.appr_email_input = QLineEdit()
-        self.appr_email_input.setPlaceholderText("Leave empty to show all pending...")
+        self.appr_email_input.setPlaceholderText("Search by user email...")
         appr_search_btn = QPushButton("Search")
         appr_search_btn.clicked.connect(self.load_pending_requests)
         appr_search_row.addWidget(self.appr_email_input)
@@ -159,6 +159,35 @@ class AdminPage(QWidget):
 
         self.tab_widget.addTab(approve_tab, "Approve Issue Requests")
 
+        # Return Book
+        return_tab = QWidget()
+        return_layout = QVBoxLayout(return_tab)
+
+        # Email filter row
+        ret_filter_row = QHBoxLayout()
+        ret_filter_row.addWidget(QLabel("User Email:"))
+        self.return_email_input = QLineEdit()
+        self.return_email_input.setPlaceholderText("Search by user email...")
+        self.return_only_overdue = QCheckBox("Show only overdue")
+        ret_search_btn = QPushButton("Search")
+        ret_search_btn.clicked.connect(self.load_return_txns)
+        ret_filter_row.addWidget(self.return_email_input)
+        ret_filter_row.addWidget(self.return_only_overdue)
+        ret_filter_row.addWidget(ret_search_btn)
+        return_layout.addLayout(ret_filter_row)
+
+        # Return table
+        self.return_table = QTableWidget()
+        self.return_table.setColumnCount(10)
+        self.return_table.setHorizontalHeaderLabels([
+            "Txn ID", "User", "Email", "Book", "ISBN",
+            "Issue", "Due", "Fine", "Status", "Actions"
+        ])
+        self.return_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.return_table.verticalHeader().setVisible(False)
+        return_layout.addWidget(self.return_table)
+
+        self.tab_widget.addTab(return_tab, "Return Book")
 
         self.tab_widget.currentChanged.connect(self.on_tab_changed)
         # Build + populate
@@ -688,7 +717,6 @@ class AdminPage(QWidget):
 
         self.load_users()
 
-
     def load_issue_books(self):
         search = self.issue_book_search.text().strip()
         sql = """
@@ -984,6 +1012,146 @@ class AdminPage(QWidget):
         QMessageBox.information(self, "Removed", f"Request #{txn_id} deleted.")
         self.load_pending_requests()
 
+    def _update_overdues(self):
+        FINE_PER_DAY = 10.00  # change as needed
+        today = QDate.currentDate()
+        today_s = today.toString("yyyy-MM-dd")
+
+        # Select overdue candidates (Issued and due date < today)
+        q = QSqlQuery()
+        q.prepare("""
+            SELECT transaction_id, due_date
+            FROM Transactions
+            WHERE status='Issued' AND due_date < ?
+        """)
+        q.addBindValue(today_s)
+        if not q.exec():
+            print("Failed to scan overdues:", q.lastError().text())
+            return
+
+        # Update each overdue with fine and status
+        while q.next():
+            txn_id = int(q.value(0))
+            due_txt = q.value(1)
+            due = QDate.fromString(due_txt, "yyyy-MM-dd")
+            if not due.isValid():
+                continue
+            days_over = due.daysTo(today)
+            if days_over <= 0:
+                continue
+            fine_val = round(days_over * FINE_PER_DAY, 2)
+
+            q2 = QSqlQuery()
+            q2.prepare("""
+                UPDATE Transactions
+                SET status='Overdue', fine=?
+                WHERE transaction_id=? AND status='Issued'
+            """)
+            q2.addBindValue(fine_val)
+            q2.addBindValue(txn_id)
+            if not q2.exec():
+                print("Failed to mark overdue:", q2.lastError().text())
+
+    def load_return_txns(self):
+        # First mark new overdues and compute fines
+        self._update_overdues()
+
+        email = self.return_email_input.text().strip()
+        only_overdue = self.return_only_overdue.isChecked()
+
+        # Base query for active loans
+        sql = """
+            SELECT t.transaction_id, u.name, u.email, b.title, b.isbn,
+                t.issue_date, t.due_date, t.fine, t.status, b.book_id
+            FROM Transactions t
+            JOIN Users u ON t.user_id = u.user_id
+            JOIN Books b ON t.book_id = b.book_id
+            WHERE t.status IN ('Issued', 'Overdue')
+        """
+        params = []
+        if email:
+            sql += " AND u.email LIKE ?"
+            params.append(f"%{email}%")
+        if only_overdue:
+            sql += " AND t.status = 'Overdue'"
+        sql += " ORDER BY t.due_date ASC, t.transaction_id DESC"
+
+        q = QSqlQuery()
+        q.prepare(sql)
+        for p in params:
+            q.addBindValue(p)
+        if not q.exec():
+            print("Failed to load returns:", q.lastError().text())
+            return
+
+        self.return_table.clearContents()
+        self.return_table.setRowCount(0)
+
+        row = 0
+        while q.next():
+            self.return_table.insertRow(row)
+            txn_id = q.value(0)
+            name = q.value(1) or ""
+            em = q.value(2) or ""
+            title = q.value(3) or ""
+            isbn = q.value(4) or ""
+            issue_date = q.value(5) or ""
+            due_date = q.value(6) or ""
+            fine = q.value(7) or 0.0
+            status = q.value(8) or ""
+            book_id = q.value(9)
+
+            self.return_table.setItem(row, 0, QTableWidgetItem(str(txn_id)))
+            self.return_table.setItem(row, 1, QTableWidgetItem(name))
+            self.return_table.setItem(row, 2, QTableWidgetItem(em))
+            self.return_table.setItem(row, 3, QTableWidgetItem(title))
+            self.return_table.setItem(row, 4, QTableWidgetItem(isbn))
+            self.return_table.setItem(row, 5, QTableWidgetItem(str(issue_date)))
+            self.return_table.setItem(row, 6, QTableWidgetItem(str(due_date)))
+            self.return_table.setItem(row, 7, QTableWidgetItem(f"{float(fine):.2f}"))
+            self.return_table.setItem(row, 8, QTableWidgetItem(status))
+
+            act = QWidget()
+            h = QHBoxLayout(act)
+            h.setContentsMargins(0, 0, 0, 0)
+            h.setSpacing(6)
+
+            ret_btn = QPushButton("Return")
+            ret_btn.clicked.connect(lambda _, tx=txn_id, bid=book_id: self.return_book(tx, bid))
+            h.addWidget(ret_btn)
+
+            self.return_table.setCellWidget(row, 9, act)
+            row += 1
+
+        self.return_table.resizeColumnsToContents()
+
+    def return_book(self, txn_id: int, book_id: int):
+        today = QDate.currentDate()
+        today_s = today.toString("yyyy-MM-dd")
+
+        # Mark transaction as returned
+        q = QSqlQuery()
+        q.prepare("""
+            UPDATE Transactions
+            SET status='Returned', return_date=?
+            WHERE transaction_id=? AND status IN ('Issued','Overdue')
+        """)
+        q.addBindValue(today_s)
+        q.addBindValue(txn_id)
+        if not q.exec():
+            QMessageBox.warning(self, "Error", f"Failed to mark returned: {q.lastError().text()}")
+            return
+
+        # Restore inventory
+        q2 = QSqlQuery()
+        q2.prepare("UPDATE Books SET available_copies = available_copies + 1 WHERE book_id=?")
+        q2.addBindValue(book_id)
+        if not q2.exec():
+            QMessageBox.warning(self, "Warning", f"Returned, but inventory update failed: {q2.lastError().text()}")
+
+        QMessageBox.information(self, "Returned", "Book successfully returned.")
+        self.load_return_txns()
+
     def on_tab_changed(self, index):
     # Check if the current tab is the "My Books" tab
         if self.tab_widget.tabText(index) == "Dashboard":
@@ -994,6 +1162,8 @@ class AdminPage(QWidget):
             self.load_users()
         elif self.tab_widget.tabText(index) == "Issue Book":
             self.load_issue_books()
+        elif self.tab_widget.tabText(index) == "Return Book":
+            self.load_return_txns()
 
 class CheckableComboBox(QComboBox):
     def __init__(self, parent=None):
