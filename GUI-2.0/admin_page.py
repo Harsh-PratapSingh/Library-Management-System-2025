@@ -60,9 +60,43 @@ class AdminPage(QWidget):
             "Published Year", "Total Copies", "Available Copies", "Actions"
         ])
         self.books_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.books_table.verticalHeader().setVisible(False)
         books_layout.addWidget(self.books_table)
 
         self.tab_widget.addTab(books_tab, "Books")
+
+        # Users tab
+        users_tab = QWidget()
+        users_layout = QVBoxLayout(users_tab)
+
+        # Add User button
+        add_user_btn = QPushButton("Add User")
+        add_user_btn.clicked.connect(self.add_user)
+        users_layout.addWidget(add_user_btn)
+
+        # Search row
+        users_search_row = QHBoxLayout()
+        users_search_row.addWidget(QLabel("Search Users:"))
+        self.users_search_input = QLineEdit()
+        self.users_search_input.setPlaceholderText("Search by name, email, or phone...")
+        users_search_btn = QPushButton("Search")
+        users_search_btn.clicked.connect(self.load_users)
+        users_search_row.addWidget(self.users_search_input)
+        users_search_row.addWidget(users_search_btn)
+        users_layout.addLayout(users_search_row)
+
+        # Users table
+        # Users table (single Actions column)
+        self.users_table = QTableWidget()
+        self.users_table.setColumnCount(7)
+        self.users_table.setHorizontalHeaderLabels([
+            "User ID", "Name", "Email", "Phone", "Role", "Active", "Actions"
+        ])
+        self.users_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.users_table.verticalHeader().setVisible(False)
+        users_layout.addWidget(self.users_table)
+
+        self.tab_widget.addTab(users_tab, "Users")
 
         self.tab_widget.currentChanged.connect(self.on_tab_changed)
         # Build + populate
@@ -78,7 +112,7 @@ class AdminPage(QWidget):
             "Active Loans",
             "Overdue Loans",
             "Pending Book Requests",
-            "Pending User Requests"  # new
+            "Inactive Users "  # new
         ]
         self.stats_table.setRowCount(len(metrics))
         for r, name in enumerate(metrics):
@@ -349,6 +383,240 @@ class AdminPage(QWidget):
             else:
                 QMessageBox.warning(self, "Error", f"Failed to delete: {query.lastError().text()}")
 
+    def load_users(self):
+        search = self.users_search_input.text().strip()
+        sql = """
+            SELECT user_id, name, email, phone, role, is_active
+            FROM Users
+            WHERE 1=1 AND role = 'user'
+        """
+        params = []
+        if search:
+            like = f"%{search}%"
+            sql += " AND (name LIKE ? OR email LIKE ? OR phone LIKE ?)"
+            params.extend([like, like, like])
+        sql += " ORDER BY name"
+
+        q = QSqlQuery()
+        q.prepare(sql)
+        for p in params:
+            q.addBindValue(p)
+        if not q.exec():
+            print("Failed to load users:", q.lastError().text())
+            return
+
+        self.users_table.clearContents()
+        self.users_table.setRowCount(0)
+
+        row = 0
+        while q.next():
+            self.users_table.insertRow(row)
+            user_id = q.value(0)
+            name = q.value(1) or ""
+            email = q.value(2) or ""
+            phone = q.value(3) or ""
+            role = q.value(4) or ""
+            is_active = int(q.value(5) or 0)
+
+            self.users_table.setItem(row, 0, QTableWidgetItem(str(user_id)))
+            self.users_table.setItem(row, 1, QTableWidgetItem(name))
+            self.users_table.setItem(row, 2, QTableWidgetItem(email))
+            self.users_table.setItem(row, 3, QTableWidgetItem(phone))
+            self.users_table.setItem(row, 4, QTableWidgetItem(role))
+            self.users_table.setItem(row, 5, QTableWidgetItem("Yes" if is_active else "No"))
+
+            # Actions cell
+            action_widget = QWidget()
+            action_layout = QHBoxLayout(action_widget)
+            action_layout.setContentsMargins(0, 0, 0, 0)
+            action_layout.setSpacing(6)
+
+            status_btn = QPushButton("Deactivate" if is_active else "Activate")
+            status_btn.setObjectName("btn_status")
+            status_btn.clicked.connect(
+                lambda _, uid=user_id, new_active=(0 if is_active else 1):
+                    self.toggle_user_status(uid, new_active)
+            )
+
+            edit_btn = QPushButton("Edit")
+            edit_btn.setObjectName("btn_edit")
+            edit_btn.clicked.connect(lambda _, uid=user_id: self.edit_user(uid))
+
+            delete_btn = QPushButton("Delete")
+            delete_btn.setObjectName("btn_delete")
+            delete_btn.clicked.connect(lambda _, uid=user_id: self.delete_user(uid))
+
+            action_layout.addWidget(status_btn)
+            action_layout.addWidget(edit_btn)
+            action_layout.addWidget(delete_btn)
+            self.users_table.setCellWidget(row, 6, action_widget)
+
+            row += 1
+
+        self.users_table.resizeColumnsToContents()
+
+    def add_user(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Add New User")
+        form = QFormLayout(dialog)
+
+        name_edit = QLineEdit()
+        email_edit = QLineEdit()
+        phone_edit = QLineEdit()
+
+        role_combo = QComboBox()
+        role_combo.addItems(["user", "admin"])
+
+        password_edit = QLineEdit()
+        password_edit.setEchoMode(QLineEdit.EchoMode.Password)   # mask input
+        confirm_edit = QLineEdit()
+        confirm_edit.setEchoMode(QLineEdit.EchoMode.Password)    # mask input
+
+        form.addRow("Name:", name_edit)
+        form.addRow("Email:", email_edit)
+        form.addRow("Phone:", phone_edit)
+        form.addRow("Role:", role_combo)
+        form.addRow("Password:", password_edit)
+        form.addRow("Confirm Password:", confirm_edit)
+
+        btns = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok |
+                                QDialogButtonBox.StandardButton.Cancel)
+        btns.accepted.connect(dialog.accept)
+        btns.rejected.connect(dialog.reject)
+        form.addRow(btns)
+
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        name = name_edit.text().strip()
+        email = email_edit.text().strip()
+        phone = phone_edit.text().strip()
+        role = role_combo.currentText()
+        pw = password_edit.text()
+        pw2 = confirm_edit.text()
+
+        if not name or not email or not phone or not pw:
+            QMessageBox.warning(self, "Invalid", "Name, Email, Phone, and Password are required.")
+            return
+        if pw != pw2:
+            QMessageBox.warning(self, "Invalid", "Passwords do not match.")
+            return
+
+        q = QSqlQuery()
+        q.prepare("""
+            INSERT INTO Users (name, email, phone, password, role, is_active)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """)
+        for v in (name, email, phone, pw, role, 1):  # is_active always true
+            q.addBindValue(v)
+
+        if q.exec():
+            QMessageBox.information(self, "Success", "User added successfully!")
+            self.load_users()
+        else:
+            QMessageBox.warning(self, "Error", f"Failed to add user: {q.lastError().text()}")
+
+
+    def toggle_user_status(self, user_id, new_active):
+        q = QSqlQuery()
+        q.prepare("UPDATE Users SET is_active=? WHERE user_id=?")
+        q.addBindValue(int(new_active))
+        q.addBindValue(user_id)
+        if not q.exec():
+            QMessageBox.warning(self, "Error", f"Failed to update status: {q.lastError().text()}")
+            return
+        self.load_users()
+
+    def delete_user(self, user_id):
+        answer = QMessageBox.question(
+            self,
+            "Confirm Delete",
+            f"Delete user ID {user_id}?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+
+        q = QSqlQuery()
+        q.prepare("DELETE FROM Users WHERE user_id=?")
+        q.addBindValue(user_id)
+        if q.exec():
+            QMessageBox.information(self, "Success", "User deleted!")
+            self.load_users()
+        else:
+            QMessageBox.warning(self, "Error", f"Failed to delete: {q.lastError().text()}")
+
+
+    def edit_user(self, user_id):
+        # find row
+        row = None
+        for r in range(self.users_table.rowCount()):
+            it = self.users_table.item(r, 0)
+            if it and it.text() == str(user_id):
+                row = r
+                break
+        if row is None:
+            return
+
+        # Actions widget in col 6
+        action_widget = self.users_table.cellWidget(row, 6)
+        if not isinstance(action_widget, QWidget):
+            return
+
+        edit_btn = action_widget.findChild(QPushButton, "btn_edit")
+        del_btn = action_widget.findChild(QPushButton, "btn_delete")
+        if not isinstance(edit_btn, QPushButton):
+            return
+
+        is_confirm = edit_btn.text() == "Confirm"
+
+        if not is_confirm:
+            # enter edit mode for Name, Email, Phone
+            for c in (1, 2, 3):
+                it = self.users_table.item(row, c)
+                if it:
+                    it.setFlags(it.flags() | Qt.ItemFlag.ItemIsEditable)
+                self.users_table.openPersistentEditor(it)
+            
+
+            edit_btn.setText("Confirm")
+            if isinstance(del_btn, QPushButton):
+                del_btn.setEnabled(False)
+            return
+
+        # confirm: read & validate
+        name = self.users_table.item(row, 1).text().strip()
+        email = self.users_table.item(row, 2).text().strip()
+        phone = self.users_table.item(row, 3).text().strip()
+        if not name or not email:
+            QMessageBox.warning(self, "Invalid", "Name and Email are required.")
+            return
+
+        q = QSqlQuery()
+        q.prepare("""
+            UPDATE Users
+            SET name=?, email=?, phone=?
+            WHERE user_id=?
+        """)
+        for v in (name, email, phone, user_id):
+            q.addBindValue(v)
+        if not q.exec():
+            QMessageBox.warning(self, "Error", f"Failed to update: {q.lastError().text()}")
+            return
+
+        # exit edit mode
+        for c in (1, 2, 3):
+            it = self.users_table.item(row, c)
+            if it:
+                it.setFlags(it.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            self.users_table.closePersistentEditor(it)
+
+        edit_btn.setText("Edit")
+        if isinstance(del_btn, QPushButton):
+            del_btn.setEnabled(True)
+
+        self.load_users()
+
 
     def on_tab_changed(self, index):
     # Check if the current tab is the "My Books" tab
@@ -356,8 +624,8 @@ class AdminPage(QWidget):
             self.setup_dashboard()
         elif self.tab_widget.tabText(index) == "Books":
             self.load_books()
-        # elif self.tab_widget.tabText(index) == "Profile And History":
-        #     self.load_profile_and_history()
+        elif self.tab_widget.tabText(index) == "Users":
+            self.load_users()
 
 class CheckableComboBox(QComboBox):
     def __init__(self, parent=None):

@@ -60,6 +60,12 @@ class AuthPage(QWidget):
         self.register_password.setEchoMode(QLineEdit.EchoMode.Password)
         register_layout.addWidget(self.register_password)
         
+        # Confirm Password field
+        self.register_confirm_password = QLineEdit()
+        self.register_confirm_password.setPlaceholderText("Confirm Password")
+        self.register_confirm_password.setEchoMode(QLineEdit.EchoMode.Password)
+        register_layout.addWidget(self.register_confirm_password)
+
         # Register button
         register_btn = QPushButton("Register")
 
@@ -95,31 +101,35 @@ class AuthPage(QWidget):
             QMessageBox.warning(self, "Login Failed", "Incorrect email or password or inactive account.")
 
     def handle_register(self):
-        name = self.register_name.text()
-        email = self.register_email.text()
-        phone = self.register_phone.text()
+        name = self.register_name.text().strip()
+        email = self.register_email.text().strip()
+        phone = self.register_phone.text().strip()
         password = self.register_password.text()
-        role = 'user'  # Or allow selection if you added that UI
-        
-        if not name or not email or not password or not phone:
+        confirm  = self.register_confirm_password.text()  # <- confirm password field
+        role = 'user'  # or from UI if you added it
+
+        if not name or not email or not phone or not password or not confirm:
             QMessageBox.warning(self, "Error", "Fill all fields")
             return
 
-        query = QSqlQuery()
-        query.prepare(
+        if password != confirm:
+            QMessageBox.warning(self, "Error", "Passwords do not match")
+            return
+
+        q = QSqlQuery()
+        q.prepare(
             "INSERT INTO Users (name, email, phone, password, max_books, is_active, role) "
             "VALUES (?, ?, ?, ?, 3, 0, ?)"
         )
-        query.addBindValue(name)
-        query.addBindValue(email)
-        query.addBindValue(phone)
-        query.addBindValue(password)
-        query.addBindValue(role)
-        query.exec()
-        
-        if query.next:
-            QMessageBox.information(self, "Request Sent", f"Ask Admin to approve your account\nemail: {email}")
-            # You may want to auto log in or switch tab to sign in here
-        else:
-            QMessageBox.warning(self, "Registration failed: ", query.lastError().text())
-            # print("Registration failed: ", query.lastError().text())
+        q.addBindValue(name)
+        q.addBindValue(email)
+        q.addBindValue(phone)
+        q.addBindValue(password)
+        q.addBindValue(role)
+
+        if not q.exec():
+            QMessageBox.warning(self, "Registration failed", q.lastError().text())
+            return
+
+        QMessageBox.information(self, "Request Sent",
+                                f"Ask Admin to approve your account\nemail: {email}")
