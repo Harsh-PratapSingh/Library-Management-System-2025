@@ -88,9 +88,9 @@ class AdminPage(QWidget):
         # Users table
         # Users table (single Actions column)
         self.users_table = QTableWidget()
-        self.users_table.setColumnCount(7)
+        self.users_table.setColumnCount(8)
         self.users_table.setHorizontalHeaderLabels([
-            "User ID", "Name", "Email", "Phone", "Role", "Active", "Actions"
+            "User ID", "Name", "Email", "Phone", "Role", "Max Books", "Active", "Actions"
         ])
         self.users_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.users_table.verticalHeader().setVisible(False)
@@ -98,11 +98,75 @@ class AdminPage(QWidget):
 
         self.tab_widget.addTab(users_tab, "Users")
 
+        #Issue Book tab
+        issue_tab = QWidget()
+        issue_layout = QVBoxLayout(issue_tab)
+
+        # User email input
+        email_row = QHBoxLayout()
+        email_row.addWidget(QLabel("User Email:"))
+        self.issue_user_email = QLineEdit()
+        email_row.addWidget(self.issue_user_email)
+        issue_layout.addLayout(email_row)
+
+        # Book search
+        search_row = QHBoxLayout()
+        search_row.addWidget(QLabel("Search Books:"))
+        self.issue_book_search = QLineEdit()
+        self.issue_book_search.setPlaceholderText("Search by title, author, or ISBN...")
+        search_btn = QPushButton("Search")
+        search_btn.clicked.connect(self.load_issue_books)
+        search_row.addWidget(self.issue_book_search)
+        search_row.addWidget(search_btn)
+        issue_layout.addLayout(search_row)
+
+        # Books table (no category column)
+        self.issue_books_table = QTableWidget()
+        self.issue_books_table.setColumnCount(7)
+        self.issue_books_table.setHorizontalHeaderLabels([
+            "Book ID", "Title", "Author", "ISBN", "Year", "Available", "Actions"
+        ])
+        self.issue_books_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.issue_books_table.verticalHeader().setVisible(False)
+        issue_layout.addWidget(self.issue_books_table)
+
+        self.tab_widget.addTab(issue_tab, "Issue Book")
+
+        # Approve Book Request tab
+        approve_tab = QWidget()
+        approve_layout = QVBoxLayout(approve_tab)
+
+        # Email search input
+        appr_search_row = QHBoxLayout()
+        appr_search_row.addWidget(QLabel("User Email:"))
+        self.appr_email_input = QLineEdit()
+        self.appr_email_input.setPlaceholderText("Leave empty to show all pending...")
+        appr_search_btn = QPushButton("Search")
+        appr_search_btn.clicked.connect(self.load_pending_requests)
+        appr_search_row.addWidget(self.appr_email_input)
+        appr_search_row.addWidget(appr_search_btn)
+        approve_layout.addLayout(appr_search_row)
+
+        # Pending Transactions table
+        self.pending_table = QTableWidget()
+        self.pending_table.setColumnCount(8)
+        self.pending_table.setHorizontalHeaderLabels([
+            "Txn ID", "User", "Email", "Book", "ISBN", "Requested", "Status", "Actions"
+        ])
+        self.pending_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.pending_table.verticalHeader().setVisible(False)
+        approve_layout.addWidget(self.pending_table)
+
+        self.tab_widget.addTab(approve_tab, "Approve Issue Requests")
+
+
         self.tab_widget.currentChanged.connect(self.on_tab_changed)
         # Build + populate
         self.setup_dashboard()
 
         self.load_books()
+
+        self.load_issue_books()
 
     def setup_dashboard(self):
         # Define rows (added Pending User Requests)
@@ -386,7 +450,7 @@ class AdminPage(QWidget):
     def load_users(self):
         search = self.users_search_input.text().strip()
         sql = """
-            SELECT user_id, name, email, phone, role, is_active
+            SELECT user_id, name, email, phone, role, max_books, is_active
             FROM Users
             WHERE 1=1 AND role = 'user'
         """
@@ -416,16 +480,17 @@ class AdminPage(QWidget):
             email = q.value(2) or ""
             phone = q.value(3) or ""
             role = q.value(4) or ""
-            is_active = int(q.value(5) or 0)
+            max_books = int(q.value(5) or 0)
+            is_active = int(q.value(6) or 0)
 
             self.users_table.setItem(row, 0, QTableWidgetItem(str(user_id)))
             self.users_table.setItem(row, 1, QTableWidgetItem(name))
             self.users_table.setItem(row, 2, QTableWidgetItem(email))
             self.users_table.setItem(row, 3, QTableWidgetItem(phone))
             self.users_table.setItem(row, 4, QTableWidgetItem(role))
-            self.users_table.setItem(row, 5, QTableWidgetItem("Yes" if is_active else "No"))
+            self.users_table.setItem(row, 5, QTableWidgetItem(str(max_books)))
+            self.users_table.setItem(row, 6, QTableWidgetItem("Yes" if is_active else "No"))
 
-            # Actions cell
             action_widget = QWidget()
             action_layout = QHBoxLayout(action_widget)
             action_layout.setContentsMargins(0, 0, 0, 0)
@@ -449,7 +514,7 @@ class AdminPage(QWidget):
             action_layout.addWidget(status_btn)
             action_layout.addWidget(edit_btn)
             action_layout.addWidget(delete_btn)
-            self.users_table.setCellWidget(row, 6, action_widget)
+            self.users_table.setCellWidget(row, 7, action_widget)
 
             row += 1
 
@@ -516,7 +581,6 @@ class AdminPage(QWidget):
         else:
             QMessageBox.warning(self, "Error", f"Failed to add user: {q.lastError().text()}")
 
-
     def toggle_user_status(self, user_id, new_active):
         q = QSqlQuery()
         q.prepare("UPDATE Users SET is_active=? WHERE user_id=?")
@@ -546,7 +610,6 @@ class AdminPage(QWidget):
         else:
             QMessageBox.warning(self, "Error", f"Failed to delete: {q.lastError().text()}")
 
-
     def edit_user(self, user_id):
         # find row
         row = None
@@ -558,8 +621,8 @@ class AdminPage(QWidget):
         if row is None:
             return
 
-        # Actions widget in col 6
-        action_widget = self.users_table.cellWidget(row, 6)
+        # Actions now at col 7
+        action_widget = self.users_table.cellWidget(row, 7)
         if not isinstance(action_widget, QWidget):
             return
 
@@ -571,13 +634,12 @@ class AdminPage(QWidget):
         is_confirm = edit_btn.text() == "Confirm"
 
         if not is_confirm:
-            # enter edit mode for Name, Email, Phone
-            for c in (1, 2, 3):
+            # enter edit mode for Name, Email, Phone, Max Books
+            for c in (1, 2, 3, 5):
                 it = self.users_table.item(row, c)
                 if it:
                     it.setFlags(it.flags() | Qt.ItemFlag.ItemIsEditable)
-                self.users_table.openPersistentEditor(it)
-            
+                    self.users_table.openPersistentEditor(it)
 
             edit_btn.setText("Confirm")
             if isinstance(del_btn, QPushButton):
@@ -588,28 +650,37 @@ class AdminPage(QWidget):
         name = self.users_table.item(row, 1).text().strip()
         email = self.users_table.item(row, 2).text().strip()
         phone = self.users_table.item(row, 3).text().strip()
+        max_books_txt = self.users_table.item(row, 5).text().strip()
+
         if not name or not email:
             QMessageBox.warning(self, "Invalid", "Name and Email are required.")
+            return
+        try:
+            max_books_val = int(max_books_txt)
+            if max_books_val < 0:
+                raise ValueError
+        except ValueError:
+            QMessageBox.warning(self, "Invalid", "Max Books must be a non-negative integer.")
             return
 
         q = QSqlQuery()
         q.prepare("""
             UPDATE Users
-            SET name=?, email=?, phone=?
+            SET name=?, email=?, phone=?, max_books=?
             WHERE user_id=?
         """)
-        for v in (name, email, phone, user_id):
+        for v in (name, email, phone, max_books_val, user_id):
             q.addBindValue(v)
         if not q.exec():
             QMessageBox.warning(self, "Error", f"Failed to update: {q.lastError().text()}")
             return
 
         # exit edit mode
-        for c in (1, 2, 3):
+        for c in (1, 2, 3, 5):
             it = self.users_table.item(row, c)
             if it:
                 it.setFlags(it.flags() & ~Qt.ItemFlag.ItemIsEditable)
-            self.users_table.closePersistentEditor(it)
+                self.users_table.closePersistentEditor(it)
 
         edit_btn.setText("Edit")
         if isinstance(del_btn, QPushButton):
@@ -617,6 +688,301 @@ class AdminPage(QWidget):
 
         self.load_users()
 
+
+    def load_issue_books(self):
+        search = self.issue_book_search.text().strip()
+        sql = """
+            SELECT book_id, title, author, isbn, published_year, available_copies
+            FROM Books
+            WHERE 1=1
+        """
+        params = []
+        if search:
+            like = f"%{search}%"
+            sql += " AND (title LIKE ? OR author LIKE ? OR isbn LIKE ?)"
+            params.extend([like, like, like])
+        sql += " ORDER BY title"
+
+        q = QSqlQuery()
+        q.prepare(sql)
+        for p in params:
+            q.addBindValue(p)
+        if not q.exec():
+            print("Failed to load books:", q.lastError().text())
+            return
+
+        self.issue_books_table.clearContents()
+        self.issue_books_table.setRowCount(0)
+
+        row = 0
+        while q.next():
+            self.issue_books_table.insertRow(row)
+            book_id = q.value(0)
+            title = q.value(1) or ""
+            author = q.value(2) or ""
+            isbn = q.value(3) or ""
+            year = str(q.value(4) or "")
+            avail = int(q.value(5) or 0)
+
+            self.issue_books_table.setItem(row, 0, QTableWidgetItem(str(book_id)))
+            self.issue_books_table.setItem(row, 1, QTableWidgetItem(title))
+            self.issue_books_table.setItem(row, 2, QTableWidgetItem(author))
+            self.issue_books_table.setItem(row, 3, QTableWidgetItem(isbn))
+            self.issue_books_table.setItem(row, 4, QTableWidgetItem(year))
+            self.issue_books_table.setItem(row, 5, QTableWidgetItem(str(avail)))
+
+            # Actions cell
+            action_widget = QWidget()
+            action_layout = QHBoxLayout(action_widget)
+            action_layout.setContentsMargins(0, 0, 0, 0)
+            action_layout.setSpacing(6)
+
+            if avail > 0:
+                issue_btn = QPushButton("Issue")
+                issue_btn.clicked.connect(lambda _, bid=book_id: self.issue_book(bid))
+                action_layout.addWidget(issue_btn)
+            else:
+                # no button when out of stock; optional label to indicate state
+                unavailable = QLabel("Unavailable")
+                action_layout.addWidget(unavailable)
+
+            self.issue_books_table.setCellWidget(row, 6, action_widget)  # single composite widget per cell
+            row += 1
+
+        self.issue_books_table.resizeColumnsToContents()
+
+    def issue_book(self, book_id: int):
+        email = self.issue_user_email.text().strip()
+        if not email:
+            QMessageBox.warning(self, "Invalid", "Enter a user email first.")
+            return
+
+        # 1) Fetch user (id, active, max_books)
+        q = QSqlQuery()
+        q.prepare("SELECT user_id, is_active, max_books FROM Users WHERE email = ?")
+        q.addBindValue(email)
+        if not q.exec() or not q.next():
+            QMessageBox.warning(self, "Not found", f"No user with email: {email}")
+            return
+
+        user_id = int(q.value(0))
+        is_active = int(q.value(1) or 0)
+        max_books = int(q.value(2) or 0)
+        if not is_active:
+            QMessageBox.warning(self, "Inactive", "User account is not active.")
+            return
+
+        # 2) Count current issued loans for user
+        q2 = QSqlQuery()
+        q2.prepare("SELECT COUNT(*) FROM Transactions WHERE user_id=? AND status='Issued'")
+        q2.addBindValue(user_id)
+        if not q2.exec() or not q2.next():
+            QMessageBox.warning(self, "Error", "Failed to read user's loan count.")
+            return
+        active_loans = int(q2.value(0) or 0)
+        if active_loans >= max_books:
+            QMessageBox.warning(self, "Limit reached", f"User already has {active_loans}/{max_books} active loans.")
+            return
+
+        # 3) Check availability
+        q3 = QSqlQuery()
+        q3.prepare("SELECT available_copies FROM Books WHERE book_id=?")
+        q3.addBindValue(book_id)
+        if not q3.exec() or not q3.next():
+            QMessageBox.warning(self, "Error", "Failed to read book availability.")
+            return
+        avail = int(q3.value(0) or 0)
+        if avail <= 0:
+            QMessageBox.warning(self, "Unavailable", "No copies available to issue.")
+            return
+
+        # 4) Compute dates
+        today = QDate.currentDate()
+        due = today.addDays(7)  # 2-week loan
+        today_str = today.toString("yyyy-MM-dd")
+        due_str = due.toString("yyyy-MM-dd")
+
+        # 5) Insert transaction
+        q4 = QSqlQuery()
+        q4.prepare("""
+            INSERT INTO Transactions (user_id, book_id, issue_date, due_date, status)
+            VALUES (?, ?, ?, ?, 'Issued')
+        """)
+        for v in (user_id, book_id, today_str, due_str):
+            q4.addBindValue(v)
+        if not q4.exec():
+            QMessageBox.warning(self, "Error", f"Failed to create transaction: {q4.lastError().text()}")
+            return
+
+        # 6) Decrement availability
+        q5 = QSqlQuery()
+        q5.prepare("UPDATE Books SET available_copies = available_copies - 1 WHERE book_id=?")
+        q5.addBindValue(book_id)
+        if not q5.exec():
+            QMessageBox.warning(self, "Warning", f"Issued, but failed to update inventory: {q5.lastError().text()}")
+
+        QMessageBox.information(self, "Issued", f"Issued to {email} until {due_str}.")
+        # Refresh table
+        self.load_issue_books()
+
+    def load_pending_requests(self):
+        email = self.appr_email_input.text().strip()
+        sql = """
+            SELECT t.transaction_id, u.user_id, b.book_id,
+                u.name, u.email, b.title, b.isbn,
+                t.issue_date, t.status
+            FROM Transactions t
+            JOIN Users u ON t.user_id = u.user_id
+            JOIN Books b ON t.book_id = b.book_id
+            WHERE t.status = 'Pending'
+        """
+        params = []
+        if email:
+            sql += " AND u.email LIKE ?"
+            params.append(f"%{email}%")
+        sql += " ORDER BY t.transaction_id DESC"
+
+        q = QSqlQuery()
+        q.prepare(sql)
+        for p in params:
+            q.addBindValue(p)
+
+        if not q.exec():
+            print("Failed to load pending requests:", q.lastError().text())
+            return
+
+        self.pending_table.clearContents()
+        self.pending_table.setRowCount(0)
+
+        row = 0
+        while q.next():
+            self.pending_table.insertRow(row)
+            txn_id = q.value(0)
+            user_id = q.value(1)
+            book_id = q.value(2)
+            name = q.value(3) or ""
+            em = q.value(4) or ""
+            title = q.value(5) or ""
+            isbn = q.value(6) or ""
+            req_date = q.value(7) or "-"
+            status = q.value(8) or "Pending"
+
+            self.pending_table.setItem(row, 0, QTableWidgetItem(str(txn_id)))
+            self.pending_table.setItem(row, 1, QTableWidgetItem(name))
+            self.pending_table.setItem(row, 2, QTableWidgetItem(em))
+            self.pending_table.setItem(row, 3, QTableWidgetItem(title))
+            self.pending_table.setItem(row, 4, QTableWidgetItem(isbn))
+            self.pending_table.setItem(row, 5, QTableWidgetItem(str(req_date)))
+            self.pending_table.setItem(row, 6, QTableWidgetItem(status))
+
+            actions = QWidget()
+            h = QHBoxLayout(actions)
+            h.setContentsMargins(0, 0, 0, 0)
+            h.setSpacing(6)
+
+            issue_btn = QPushButton("Issue")
+            issue_btn.clicked.connect(lambda _, tx=txn_id, uid=user_id, bid=book_id:
+                                    self.approve_issue_request(tx, uid, bid))
+            h.addWidget(issue_btn)
+
+            reject_btn = QPushButton("Reject")  # <- new
+            reject_btn.clicked.connect(lambda _, tx=txn_id: self.reject_issue_request(tx))  # <- new
+            h.addWidget(reject_btn)  # <- new
+
+            self.pending_table.setCellWidget(row, 7, actions)
+            row += 1
+
+        self.pending_table.resizeColumnsToContents()
+
+    def approve_issue_request(self, txn_id: int, user_id: int, book_id: int):
+        # 1) Check user is active and max_books not exceeded
+        q1 = QSqlQuery()
+        q1.prepare("SELECT is_active, max_books FROM Users WHERE user_id=?")
+        q1.addBindValue(user_id)
+        if not q1.exec() or not q1.next():
+            QMessageBox.warning(self, "Error", "Failed to read user.")
+            return
+        is_active = int(q1.value(0) or 0)
+        max_books = int(q1.value(1) or 0)
+        if not is_active:
+            QMessageBox.warning(self, "Inactive", "User account is not active.")
+            return
+
+        q2 = QSqlQuery()
+        q2.prepare("SELECT COUNT(*) FROM Transactions WHERE user_id=? AND status='Issued'")
+        q2.addBindValue(user_id)
+        if not q2.exec() or not q2.next():
+            QMessageBox.warning(self, "Error", "Failed to read user's active loans.")
+            return
+        active_loans = int(q2.value(0) or 0)
+        if active_loans >= max_books:
+            QMessageBox.warning(self, "Limit reached",
+                                f"User already has {active_loans}/{max_books} active loans.")
+            return
+
+        # 2) Check availability
+        q3 = QSqlQuery()
+        q3.prepare("SELECT available_copies FROM Books WHERE book_id=?")
+        q3.addBindValue(book_id)
+        if not q3.exec() or not q3.next():
+            QMessageBox.warning(self, "Error", "Failed to read book availability.")
+            return
+        avail = int(q3.value(0) or 0)
+        if avail <= 0:
+            QMessageBox.warning(self, "Unavailable", "No copies available to issue.")
+            return
+
+        # 3) Compute dates
+        today = QDate.currentDate()
+        due = today.addDays(7)
+        today_s = today.toString("yyyy-MM-dd")
+        due_s = due.toString("yyyy-MM-dd")
+
+        # 4) Approve: update transaction and inventory
+        q4 = QSqlQuery()
+        q4.prepare("""
+            UPDATE Transactions
+            SET status='Issued', issue_date=?, due_date=?
+            WHERE transaction_id=? AND status='Pending'
+        """)
+        q4.addBindValue(today_s)
+        q4.addBindValue(due_s)
+        q4.addBindValue(txn_id)
+        if not q4.exec():
+            QMessageBox.warning(self, "Error", f"Failed to approve: {q4.lastError().text()}")
+            return
+
+        q5 = QSqlQuery()
+        q5.prepare("UPDATE Books SET available_copies = available_copies - 1 WHERE book_id=?")
+        q5.addBindValue(book_id)
+        if not q5.exec():
+            QMessageBox.warning(self, "Warning", f"Approved, but failed to update inventory: {q5.lastError().text()}")
+
+        QMessageBox.information(self, "Approved", f"Issue approved; due on {due_s}.")
+        self.load_pending_requests()
+
+    def reject_issue_request(self, txn_id: int):
+        ans = QMessageBox.question(
+            self,
+            "Confirm Rejection",
+            f"Reject and remove request #{txn_id}?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if ans != QMessageBox.StandardButton.Yes:
+            return
+
+        q = QSqlQuery()
+        q.prepare("""
+            DELETE FROM Transactions
+            WHERE transaction_id=? AND status='Pending'
+        """)
+        q.addBindValue(txn_id)
+        if not q.exec():
+            QMessageBox.warning(self, "Error", f"Failed to remove request: {q.lastError().text()}")
+            return
+
+        QMessageBox.information(self, "Removed", f"Request #{txn_id} deleted.")
+        self.load_pending_requests()
 
     def on_tab_changed(self, index):
     # Check if the current tab is the "My Books" tab
@@ -626,6 +992,8 @@ class AdminPage(QWidget):
             self.load_books()
         elif self.tab_widget.tabText(index) == "Users":
             self.load_users()
+        elif self.tab_widget.tabText(index) == "Issue Book":
+            self.load_issue_books()
 
 class CheckableComboBox(QComboBox):
     def __init__(self, parent=None):
@@ -667,6 +1035,7 @@ class CheckableComboBox(QComboBox):
 # 1: Dashboard - Statistics widget showing total books, total users, active loans, overdue books, pending requests. 
 # 2: Books - now this has a Add book button, and a search similar to user page without category, which will show the editable table, with columns for Edit and Delete button which will ask for conformation
 # 3: Users - has a Add User button , again search with name, email, phone, which will show the editable button with a column for button to toggle status, which says "Activate" or "Deactivate", and another columns for Edit and Delete which will ask for conformation
-# 4: Transactions - has a Issue Book button, has a search to view transaction table
+# 4: Issue Book tab - has input field to input user email, and a search book and table without category option, with an extra Actions Column with Issue button
+# 4: Transactions - has a search to view transaction table
 # 5: Active Loans - add a search and a checkbox to show only overdue. this shows a table, with a column with Return button
 # 6: Requests - has a sub tab for User, and Book, shows tables with columns with buttons to Approve or Deny
