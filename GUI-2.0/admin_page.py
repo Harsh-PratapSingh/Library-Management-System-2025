@@ -138,7 +138,7 @@ class AdminPage(QWidget):
 
         # Email search input
         appr_search_row = QHBoxLayout()
-        appr_search_row.addWidget(QLabel("User Email:"))
+        appr_search_row.addWidget(QLabel("Search User:"))
         self.appr_email_input = QLineEdit()
         self.appr_email_input.setPlaceholderText("Search by user email...")
         appr_search_btn = QPushButton("Search")
@@ -165,7 +165,7 @@ class AdminPage(QWidget):
 
         # Email filter row
         ret_filter_row = QHBoxLayout()
-        ret_filter_row.addWidget(QLabel("User Email:"))
+        ret_filter_row.addWidget(QLabel("Search User:"))
         self.return_email_input = QLineEdit()
         self.return_email_input.setPlaceholderText("Search by user email...")
         self.return_only_overdue = QCheckBox("Show only overdue")
@@ -188,6 +188,33 @@ class AdminPage(QWidget):
         return_layout.addWidget(self.return_table)
 
         self.tab_widget.addTab(return_tab, "Return Book")
+
+        tx_tab = QWidget()
+        tx_layout = QVBoxLayout(tx_tab)
+
+        # Email filter row
+        tx_filter = QHBoxLayout()
+        tx_filter.addWidget(QLabel("Search User:"))
+        self.tx_email_input = QLineEdit()
+        self.tx_email_input.setPlaceholderText("Leave empty to show all...")
+        tx_search_btn = QPushButton("Search")
+        tx_search_btn.clicked.connect(self.load_transactions)
+        tx_filter.addWidget(self.tx_email_input)
+        tx_filter.addWidget(tx_search_btn)
+        tx_layout.addLayout(tx_filter)
+
+        # Transactions table
+        self.tx_table = QTableWidget()
+        self.tx_table.setColumnCount(10)
+        self.tx_table.setHorizontalHeaderLabels([
+            "Txn ID", "User", "Email", "Book", "ISBN",
+            "Issue", "Due", "Return", "Fine", "Status"
+        ])
+        self.tx_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.tx_table.verticalHeader().setVisible(False)
+        tx_layout.addWidget(self.tx_table)
+
+        self.tab_widget.addTab(tx_tab, "Transactions")
 
         self.tab_widget.currentChanged.connect(self.on_tab_changed)
         # Build + populate
@@ -1152,6 +1179,67 @@ class AdminPage(QWidget):
         QMessageBox.information(self, "Returned", "Book successfully returned.")
         self.load_return_txns()
 
+    def load_transactions(self):
+        # Refresh overdue statuses/fines first
+        self._update_overdues()
+
+        email = self.tx_email_input.text().strip()
+
+        sql = """
+            SELECT t.transaction_id, u.name, u.email, b.title, b.isbn,
+                t.issue_date, t.due_date, t.return_date, t.fine, t.status
+            FROM Transactions t
+            JOIN Users u ON t.user_id = u.user_id
+            JOIN Books b ON t.book_id = b.book_id
+            WHERE 1=1
+        """
+        params = []
+        if email:
+            sql += " AND u.email LIKE ?"
+            params.append(f"%{email}%")
+        sql += " ORDER BY t.transaction_id DESC"
+
+        q = QSqlQuery()
+        q.prepare(sql)
+        for p in params:
+            q.addBindValue(p)
+        if not q.exec():
+            print("Failed to load transactions:", q.lastError().text())
+            return
+
+        self.tx_table.clearContents()
+        self.tx_table.setRowCount(0)
+
+        row = 0
+        while q.next():
+            self.tx_table.insertRow(row)
+            txn_id   = q.value(0)
+            name     = q.value(1) or ""
+            em       = q.value(2) or ""
+            title    = q.value(3) or ""
+            isbn     = q.value(4) or ""
+            issue_dt = q.value(5) or ""
+            due_dt   = q.value(6) or ""
+            ret_dt   = q.value(7) or ""
+            fine     = q.value(8) or 0.0
+            status   = q.value(9) or ""
+
+            self.tx_table.setItem(row, 0, QTableWidgetItem(str(txn_id)))
+            self.tx_table.setItem(row, 1, QTableWidgetItem(name))
+            self.tx_table.setItem(row, 2, QTableWidgetItem(em))
+            self.tx_table.setItem(row, 3, QTableWidgetItem(title))
+            self.tx_table.setItem(row, 4, QTableWidgetItem(isbn))
+            self.tx_table.setItem(row, 5, QTableWidgetItem(str(issue_dt)))
+            self.tx_table.setItem(row, 6, QTableWidgetItem(str(due_dt)))
+            self.tx_table.setItem(row, 7, QTableWidgetItem(str(ret_dt) if ret_dt else "-"))
+            self.tx_table.setItem(row, 8, QTableWidgetItem(f"{float(fine):.2f}"))
+            self.tx_table.setItem(row, 9, QTableWidgetItem(status))
+
+            row += 1
+
+        self.tx_table.resizeColumnsToContents()
+
+
     def on_tab_changed(self, index):
     # Check if the current tab is the "My Books" tab
         if self.tab_widget.tabText(index) == "Dashboard":
@@ -1164,6 +1252,9 @@ class AdminPage(QWidget):
             self.load_issue_books()
         elif self.tab_widget.tabText(index) == "Return Book":
             self.load_return_txns()
+        elif self.tab_widget.tabText(index) == "Transactions":
+            self.load_transactions()
+    
 
 class CheckableComboBox(QComboBox):
     def __init__(self, parent=None):
