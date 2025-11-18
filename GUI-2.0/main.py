@@ -10,7 +10,7 @@ import qt_themes
 from database import init_db, seed_data
 
 import os
-os.environ["QT_SCALE_FACTOR"] = "2.0"  # Increased app scaling
+os.environ["QT_SCALE_FACTOR"] = "2.0"  
 
 from auth_page import AuthPage
 from user_page import UserPage
@@ -34,26 +34,21 @@ class MainWindow(QMainWindow):
 
         self.setFixedSize(QSize(1242, 770))
         
-        # Create stacked layout
         self.stacked_layout = QStackedLayout()
         
-        # Create pages
         self.auth_page = AuthPage()
         self.auth_page.login_success.connect(self.open_page)
         self.user_page = UserPage()
         self.admin_page = AdminPage()
         
-        # Add pages to stack (index 0 = auth, 1 = user, 2 = admin)
         self.stacked_layout.addWidget(self.auth_page)
         self.stacked_layout.addWidget(self.user_page)
         self.stacked_layout.addWidget(self.admin_page)
         
-        # Set stacked layout as central widget
         central_widget = QWidget()
         central_widget.setLayout(self.stacked_layout)
         self.setCentralWidget(central_widget)
         
-        # Start on auth page
         self.stacked_layout.setCurrentIndex(0)
 
     def open_page(self, role):

@@ -1,7 +1,7 @@
 from PyQt6.QtSql import QSqlDatabase, QSqlQuery
 
-import random #new import
-from datetime import datetime, timedelta #new import
+import random 
+from datetime import datetime, timedelta 
 
 def init_db():
     # db = QSqlDatabase.addDatabase("QSQLITE")
@@ -12,7 +12,6 @@ def init_db():
     
     query = QSqlQuery()
     
-    # Books table
     query.exec("""
         CREATE TABLE IF NOT EXISTS Books (
             book_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,7 +25,6 @@ def init_db():
         )
     """)
     
-    # Users table (with role and password)
     query.exec("""
         CREATE TABLE IF NOT EXISTS Users (
             user_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,7 +39,6 @@ def init_db():
         )
     """)
     
-    # Transactions table
     query.exec("""
         CREATE TABLE IF NOT EXISTS Transactions (
             transaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -177,7 +174,7 @@ def generate_books():
         isbn = f"{random.randint(10000000, 99999999)}"
         categories = genre_assignments[i]
         total_copies = random.randint(1, 10)
-        available_copies = total_copies  # Set to total at creation
+        available_copies = total_copies  
         books.append((title, isbn, author, categories, year, total_copies, available_copies))
     return books
 
@@ -236,7 +233,7 @@ def seed_data():
     #     return False
     query = QSqlQuery()
     
-    # Clear existing data (using raw SQL for simplicity)
+    # Clear existing data 
     query.exec("DELETE FROM Transactions")
     query.exec("DELETE FROM Books")
     query.exec("DELETE FROM Users")
@@ -305,42 +302,3 @@ def seed_data():
     return True
 
 
-# 1. Fiction
-
-# 2. Non-Fiction
-
-# 3. Mystery
-
-# 4. Science Fiction
-
-# 5. Fantasy
-
-# 6. Romance
-
-# 7. Thriller
-
-# 8. Historical
-
-# 9. Biography
-
-# 10. Children
-
-# 11. Young Adult
-
-# 12. Horror
-
-# 13. Adventure
-
-# 14. Classic
-
-# 15. Graphic Novel
-
-# 16. Poetry
-
-# 17. Self-Help
-
-# 18. Science
-
-# 19. History
-
-# 20. Travel

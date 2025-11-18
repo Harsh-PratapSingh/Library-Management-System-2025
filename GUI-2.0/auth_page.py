@@ -90,13 +90,13 @@ class AuthPage(QWidget):
         query.addBindValue(password)
         query.exec()
 
-          # e.g., emit role or user_id
+          
         
         if query.next():
             self.user_id = query.value(0)
             role = query.value(1)
             # QMessageBox.information(self, "Login Successful", f"Welcome! Role: {self.user_id}")
-            self.login_success.emit(role)  # Emit signal with data
+            self.login_success.emit(role)  
         else:
             QMessageBox.warning(self, "Login Failed", "Incorrect email or password or inactive account.")
 
@@ -105,8 +105,8 @@ class AuthPage(QWidget):
         email = self.register_email.text().strip()
         phone = self.register_phone.text().strip()
         password = self.register_password.text()
-        confirm  = self.register_confirm_password.text()  # <- confirm password field
-        role = 'user'  # or from UI if you added it
+        confirm  = self.register_confirm_password.text()  
+        role = 'user'  
 
         if not name or not email or not phone or not password or not confirm:
             QMessageBox.warning(self, "Error", "Fill all fields")

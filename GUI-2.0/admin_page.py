@@ -914,9 +914,9 @@ class AdminPage(QWidget):
                                     self.approve_issue_request(tx, uid, bid))
             h.addWidget(issue_btn)
 
-            reject_btn = QPushButton("Reject")  # <- new
+            reject_btn = QPushButton("Reject")  
             reject_btn.clicked.connect(lambda _, tx=txn_id: self.reject_issue_request(tx))  # <- new
-            h.addWidget(reject_btn)  # <- new
+            h.addWidget(reject_btn)  
 
             self.pending_table.setCellWidget(row, 7, actions)
             row += 1
@@ -924,7 +924,7 @@ class AdminPage(QWidget):
         self.pending_table.resizeColumnsToContents()
 
     def approve_issue_request(self, txn_id: int, user_id: int, book_id: int):
-        # 1) Check user is active and max_books not exceeded
+    
         q1 = QSqlQuery()
         q1.prepare("SELECT is_active, max_books FROM Users WHERE user_id=?")
         q1.addBindValue(user_id)
@@ -949,7 +949,6 @@ class AdminPage(QWidget):
                                 f"User already has {active_loans}/{max_books} active loans.")
             return
 
-        # 2) Check availability
         q3 = QSqlQuery()
         q3.prepare("SELECT available_copies FROM Books WHERE book_id=?")
         q3.addBindValue(book_id)
@@ -961,13 +960,12 @@ class AdminPage(QWidget):
             QMessageBox.warning(self, "Unavailable", "No copies available to issue.")
             return
 
-        # 3) Compute dates
         today = QDate.currentDate()
         due = today.addDays(7)
         today_s = today.toString("yyyy-MM-dd")
         due_s = due.toString("yyyy-MM-dd")
 
-        # 4) Approve: update transaction and inventory
+        
         q4 = QSqlQuery()
         q4.prepare("""
             UPDATE Transactions
@@ -1014,11 +1012,11 @@ class AdminPage(QWidget):
         self.load_pending_requests()
 
     def _update_overdues(self):
-        FINE_PER_DAY = 10.00  # change as needed
+        FINE_PER_DAY = 10.00  
         today = QDate.currentDate()
         today_s = today.toString("yyyy-MM-dd")
 
-        # Select overdue candidates (Issued and due date < today)
+
         q = QSqlQuery()
         q.prepare("""
             SELECT transaction_id, due_date
@@ -1030,7 +1028,6 @@ class AdminPage(QWidget):
             print("Failed to scan overdues:", q.lastError().text())
             return
 
-        # Update each overdue with fine and status
         while q.next():
             txn_id = int(q.value(0))
             due_txt = q.value(1)
@@ -1054,13 +1051,11 @@ class AdminPage(QWidget):
                 print("Failed to mark overdue:", q2.lastError().text())
 
     def load_return_txns(self):
-        # First mark new overdues and compute fines
         self._update_overdues()
 
         email = self.return_email_input.text().strip()
         only_overdue = self.return_only_overdue.isChecked()
 
-        # Base query for active loans
         sql = """
             SELECT t.transaction_id, u.name, u.email, b.title, b.isbn,
                 t.issue_date, t.due_date, t.fine, t.status, b.book_id
@@ -1130,7 +1125,6 @@ class AdminPage(QWidget):
         today = QDate.currentDate()
         today_s = today.toString("yyyy-MM-dd")
 
-        # Mark transaction as returned
         q = QSqlQuery()
         q.prepare("""
             UPDATE Transactions
@@ -1143,7 +1137,6 @@ class AdminPage(QWidget):
             QMessageBox.warning(self, "Error", f"Failed to mark returned: {q.lastError().text()}")
             return
 
-        # Restore inventory
         q2 = QSqlQuery()
         q2.prepare("UPDATE Books SET available_copies = available_copies + 1 WHERE book_id=?")
         q2.addBindValue(book_id)
@@ -1154,7 +1147,7 @@ class AdminPage(QWidget):
         self.load_return_txns()
 
     def load_transactions(self):
-        # Refresh overdue statuses/fines first
+
         self._update_overdues()
 
         email = self.tx_email_input.text().strip()
@@ -1215,7 +1208,7 @@ class AdminPage(QWidget):
 
 
     def on_tab_changed(self, index):
-    # Check if the current tab is the "My Books" tab
+    
         if self.tab_widget.tabText(index) == "Dashboard":
             self.setup_dashboard()
         elif self.tab_widget.tabText(index) == "Books":
@@ -1265,12 +1258,3 @@ class CheckableComboBox(QComboBox):
         for i in range(self.model().rowCount()):
             self.model().item(i).setCheckState(state)
 
-
-# Alright lets make the admin page using these tabs
-# 1: Dashboard - Statistics widget showing total books, total users, active loans, overdue books, pending requests. 
-# 2: Books - now this has a Add book button, and a search similar to user page without category, which will show the editable table, with columns for Edit and Delete button which will ask for conformation
-# 3: Users - has a Add User button , again search with name, email, phone, which will show the editable button with a column for button to toggle status, which says "Activate" or "Deactivate", and another columns for Edit and Delete which will ask for conformation
-# 4: Issue Book tab - has input field to input user email, and a search book and table without category option, with an extra Actions Column with Issue button
-# 4: Transactions - has a search to view transaction table
-# 5: Active Loans - add a search and a checkbox to show only overdue. this shows a table, with a column with Return button
-# 6: Requests - has a sub tab for User, and Book, shows tables with columns with buttons to Approve or Deny

@@ -52,7 +52,7 @@ class UserPage(QWidget):
         
         # Search results placeholder
         self.results_table = QTableWidget()
-        self.results_table.setColumnCount(6)  # Title, Author, ISBN, Categories, Copies
+        self.results_table.setColumnCount(6)  
         self.results_table.setHorizontalHeaderLabels(["Title", "Author", "ISBN", "Categories", "Available Copies", "Borrow"])
         header = self.results_table.horizontalHeader()
         for i in range(self.results_table.columnCount()):
@@ -61,7 +61,6 @@ class UserPage(QWidget):
 
         search_layout.addWidget(self.results_table)
         
-        # Connect search button
         search_btn.clicked.connect(self.perform_search)
 
         self.tab_widget.addTab(search_tab, "Search And Browse Books")
@@ -103,7 +102,7 @@ class UserPage(QWidget):
 
         # Transaction history table
         self.transactions_table = QTableWidget()
-        self.transactions_table.setColumnCount(8)  # transaction_id, title, issue_date, due_date, return_date, fine, status, book_id
+        self.transactions_table.setColumnCount(8)  
         self.transactions_table.setHorizontalHeaderLabels(["Transaction ID", "Title", "Issue Date", "Due Date", "Return Date", "Fine", "Status", "Book ID"])
         header = self.transactions_table.horizontalHeader()
         for i in range(self.transactions_table.columnCount()):
@@ -118,6 +117,8 @@ class UserPage(QWidget):
 
         layout.addWidget(self.tab_widget)
         # layout.addStretch()
+
+        self.perform_search()
 
     def handle_select_toggle(self):
         if self.toggle_btn.text() == "Select All":
@@ -163,19 +164,18 @@ class UserPage(QWidget):
         row = 0
         while query.next():
             self.results_table.insertRow(row)
-            self.results_table.setItem(row, 0, QTableWidgetItem(query.value(1)))  # title
-            self.results_table.setItem(row, 1, QTableWidgetItem(query.value(2)))  # author
-            self.results_table.setItem(row, 2, QTableWidgetItem(query.value(3)))  # isbn
-            self.results_table.setItem(row, 3, QTableWidgetItem(query.value(4)))  # category
-            self.results_table.setItem(row, 4, QTableWidgetItem(str(query.value(5))))  # available copies
+            self.results_table.setItem(row, 0, QTableWidgetItem(query.value(1)))  
+            self.results_table.setItem(row, 1, QTableWidgetItem(query.value(2)))  
+            self.results_table.setItem(row, 2, QTableWidgetItem(query.value(3)))  
+            self.results_table.setItem(row, 3, QTableWidgetItem(query.value(4)))  
+            self.results_table.setItem(row, 4, QTableWidgetItem(str(query.value(5)))) 
 
-            book_id = query.value(0)  # proper book_id now
+            book_id = query.value(0)  
             copies_available = query.value(5)
 
             borrow_btn = QPushButton("Borrow")
             borrow_btn.clicked.connect(lambda _, bid=book_id: self.borrow_book(bid))
             
-            # Disable button if no copies available
             if copies_available == 0:
                 borrow_btn.setEnabled(False)
 
@@ -187,7 +187,6 @@ class UserPage(QWidget):
 
     def borrow_book(self, book_id):
 
-        # Prepare dates
         issue_date = datetime.now().strftime('%Y-%m-%d')
         due_date = (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')  # 2 weeks loan
         return_date = None
@@ -239,13 +238,13 @@ class UserPage(QWidget):
         row = 0
         while query.next():
             self.my_books_table.insertRow(row)
-            self.my_books_table.setItem(row, 0, QTableWidgetItem(query.value(0)))  # title
-            self.my_books_table.setItem(row, 1, QTableWidgetItem(query.value(1)))  # author
-            self.my_books_table.setItem(row, 2, QTableWidgetItem(query.value(2)))  # isbn
-            self.my_books_table.setItem(row, 3, QTableWidgetItem(query.value(3)))  # category
-            self.my_books_table.setItem(row, 4, QTableWidgetItem(query.value(4)))  # issue_date
-            self.my_books_table.setItem(row, 5, QTableWidgetItem(query.value(5)))  # due_date
-            self.my_books_table.setItem(row, 6, QTableWidgetItem(query.value(6)))  # status
+            self.my_books_table.setItem(row, 0, QTableWidgetItem(query.value(0)))  
+            self.my_books_table.setItem(row, 1, QTableWidgetItem(query.value(1)))  
+            self.my_books_table.setItem(row, 2, QTableWidgetItem(query.value(2)))  
+            self.my_books_table.setItem(row, 3, QTableWidgetItem(query.value(3)))  
+            self.my_books_table.setItem(row, 4, QTableWidgetItem(query.value(4)))  
+            self.my_books_table.setItem(row, 5, QTableWidgetItem(query.value(5)))  
+            self.my_books_table.setItem(row, 6, QTableWidgetItem(query.value(6)))  
             row += 1
 
         self.my_books_table.resizeColumnsToContents()
@@ -286,20 +285,19 @@ class UserPage(QWidget):
         row = 0
         while query.next():
             self.transactions_table.insertRow(row)
-            self.transactions_table.setItem(row, 0, QTableWidgetItem(str(query.value(0))))  # transaction_id
-            self.transactions_table.setItem(row, 1, QTableWidgetItem(query.value(1)))  # title
-            self.transactions_table.setItem(row, 2, QTableWidgetItem(query.value(2)))  # issue_date
-            self.transactions_table.setItem(row, 3, QTableWidgetItem(query.value(3)))  # due_date
-            self.transactions_table.setItem(row, 4, QTableWidgetItem(str(query.value(4) if query.value(4) else "")))  # return_date
-            self.transactions_table.setItem(row, 5, QTableWidgetItem(str(query.value(5))))  # fine
-            self.transactions_table.setItem(row, 6, QTableWidgetItem(query.value(6)))  # status
-            self.transactions_table.setItem(row, 7, QTableWidgetItem(str(query.value(7))))  # book_id
+            self.transactions_table.setItem(row, 0, QTableWidgetItem(str(query.value(0))))  
+            self.transactions_table.setItem(row, 1, QTableWidgetItem(query.value(1)))  
+            self.transactions_table.setItem(row, 2, QTableWidgetItem(query.value(2)))  
+            self.transactions_table.setItem(row, 3, QTableWidgetItem(query.value(3)))  
+            self.transactions_table.setItem(row, 4, QTableWidgetItem(str(query.value(4) if query.value(4) else "")))  
+            self.transactions_table.setItem(row, 5, QTableWidgetItem(str(query.value(5))))  
+            self.transactions_table.setItem(row, 6, QTableWidgetItem(query.value(6)))  
+            self.transactions_table.setItem(row, 7, QTableWidgetItem(str(query.value(7))))  
             row += 1
         
         self.transactions_table.resizeColumnsToContents()
 
     def on_tab_changed(self, index):
-    # Check if the current tab is the "My Books" tab
         if self.tab_widget.tabText(index) == "My Books":
             self.load_my_books()
         elif self.tab_widget.tabText(index) == "Search And Browse Books":
