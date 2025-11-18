@@ -17,7 +17,6 @@ class AdminPage(QWidget):
         root_layout = QVBoxLayout(self)
         root_layout.addWidget(self.tab_widget)
 
-        # Dashboard tab with a simple table
         dashboard_tab = QWidget()
         dash_layout = QVBoxLayout(dashboard_tab)
 
@@ -86,7 +85,6 @@ class AdminPage(QWidget):
         users_layout.addLayout(users_search_row)
 
         # Users table
-        # Users table (single Actions column)
         self.users_table = QTableWidget()
         self.users_table.setColumnCount(8)
         self.users_table.setHorizontalHeaderLabels([
@@ -120,7 +118,7 @@ class AdminPage(QWidget):
         search_row.addWidget(search_btn)
         issue_layout.addLayout(search_row)
 
-        # Books table (no category column)
+        # Books table 
         self.issue_books_table = QTableWidget()
         self.issue_books_table.setColumnCount(7)
         self.issue_books_table.setHorizontalHeaderLabels([
@@ -217,29 +215,24 @@ class AdminPage(QWidget):
         self.tab_widget.addTab(tx_tab, "Transactions")
 
         self.tab_widget.currentChanged.connect(self.on_tab_changed)
-        # Build + populate
+
         self.setup_dashboard()
 
-        self.load_books()
-
-        self.load_issue_books()
 
     def setup_dashboard(self):
-        # Define rows (added Pending User Requests)
         metrics = [
             "Total Books",
             "Total Users",
             "Active Loans",
             "Overdue Loans",
             "Pending Book Requests",
-            "Inactive Users "  # new
+            "Inactive Users "  
         ]
         self.stats_table.setRowCount(len(metrics))
         for r, name in enumerate(metrics):
             self.stats_table.setItem(r, 0, QTableWidgetItem(name))
             self.stats_table.setItem(r, 1, QTableWidgetItem("—"))
 
-        # Inline query runner
         def run_count(sql, params=None):
             q = QSqlQuery()
             q.prepare(sql)
@@ -252,7 +245,6 @@ class AdminPage(QWidget):
 
         today = QDate.currentDate().toString("yyyy-MM-dd")
 
-        # Execute counts
         total_books = run_count("SELECT COUNT(*) FROM Books")
         total_users = run_count("SELECT COUNT(*) FROM Users WHERE role = 'user'")
         active_loans = run_count("SELECT COUNT(*) FROM Transactions WHERE status = 'Issued'")
@@ -268,7 +260,7 @@ class AdminPage(QWidget):
             active_loans,
             overdue_loans,
             pending_txn_requests,
-            pending_user_requests  # new value
+            pending_user_requests  
         ]
         for r, val in enumerate(values):
             self.stats_table.setItem(r, 1, QTableWidgetItem(str(val)))
@@ -284,7 +276,6 @@ class AdminPage(QWidget):
         author_edit = QLineEdit()
         isbn_edit = QLineEdit()
 
-        # Replace category_edit with CheckableComboBox
         categories_combo = CheckableComboBox()
         categories = [
             'Fiction', 'Non-Fiction', 'Mystery',
@@ -319,7 +310,6 @@ class AdminPage(QWidget):
             selected_categories = categories_combo.checked_items()
             category_value = ",".join(selected_categories)  # store as comma-separated string
 
-            # Basic validation
             title = title_edit.text().strip()
             author = author_edit.text().strip()
             isbn = isbn_edit.text().strip()
@@ -383,13 +373,12 @@ class AdminPage(QWidget):
             self.books_table.setItem(row, 6, QTableWidgetItem(str(query.value(6))))  # total
             self.books_table.setItem(row, 7, QTableWidgetItem(str(query.value(7))))  # available
 
-            # Actions column with Edit and Delete buttons
+            # Actions column 
             edit_btn = QPushButton("Edit")
             edit_btn.clicked.connect(lambda _, bid=book_id: self.edit_book(bid))
             delete_btn = QPushButton("Delete")
             delete_btn.clicked.connect(lambda _, bid=book_id: self.delete_book(bid))
 
-            # Simple horizontal layout for buttons (or use QHBoxLayout if needed)
             action_widget = QWidget()
             action_layout = QHBoxLayout(action_widget)
             action_layout.addWidget(edit_btn)
@@ -402,7 +391,6 @@ class AdminPage(QWidget):
         self.books_table.resizeColumnsToContents()
 
     def edit_book(self, book_id):
-        # Locate row by book_id in column 0
         row = None
         for r in range(self.books_table.rowCount()):
             it = self.books_table.item(r, 0)
@@ -412,7 +400,6 @@ class AdminPage(QWidget):
         if row is None:
             return
 
-        # Fetch the action widget and the first button (Edit/Confirm)
         action_widget: QWidget = self.books_table.cellWidget(row, 8)
         btns = action_widget.findChildren(QPushButton)
         if not btns:
@@ -421,7 +408,6 @@ class AdminPage(QWidget):
         is_confirm = edit_btn.text() == "Confirm"
 
         if not is_confirm:
-            # Enter edit mode: make row items editable (cols 1..7)
             for col in range(1, 8):
                 item = self.books_table.item(row, col)
                 if not item:
@@ -430,14 +416,11 @@ class AdminPage(QWidget):
                 self.books_table.openPersistentEditor(item)
             edit_btn.setText("Confirm")
 
-            # Optional: disable Delete while editing to avoid conflicts
             if len(btns) > 1:
                 btns[1].setEnabled(False)
-            # Optionally start editing first editable cell:
-            # self.books_table.editItem(self.books_table.item(row, 1))
+
             return
 
-        # Confirm: read values, validate, update DB
         title = self.books_table.item(row, 1).text().strip()
         author = self.books_table.item(row, 2).text().strip()
         isbn = self.books_table.item(row, 3).text().strip()
@@ -446,7 +429,7 @@ class AdminPage(QWidget):
         total_txt = self.books_table.item(row, 6).text().strip()
         avail_txt = self.books_table.item(row, 7).text().strip()
 
-        # Basic validation
+
         if not title or not author or not isbn or not category:
             QMessageBox.warning(self, "Invalid", "Title, Author, ISBN, and Category are required.")
             return
@@ -461,7 +444,6 @@ class AdminPage(QWidget):
             QMessageBox.warning(self, "Invalid", "Copies must be non-negative and Available ≤ Total.")
             return
 
-        # Update DB
         q = QSqlQuery()
         q.prepare("""
             UPDATE Books
@@ -474,7 +456,6 @@ class AdminPage(QWidget):
             QMessageBox.warning(self, "Error", f"Failed to update: {q.lastError().text()}")
             return
 
-        # Exit edit mode: make row items read-only again, restore buttons
         for col in range(1, 8):
             item = self.books_table.item(row, col)
             if not item:
@@ -499,7 +480,7 @@ class AdminPage(QWidget):
             query.addBindValue(book_id)
             if query.exec():
                 QMessageBox.information(self, "Success", "Book deleted!")
-                self.load_books()  # Refresh
+                self.load_books()  
             else:
                 QMessageBox.warning(self, "Error", f"Failed to delete: {query.lastError().text()}")
 
@@ -508,7 +489,7 @@ class AdminPage(QWidget):
         sql = """
             SELECT user_id, name, email, phone, role, max_books, is_active
             FROM Users
-            WHERE 1=1 AND role = 'user'
+            WHERE 1=1
         """
         params = []
         if search:
@@ -537,6 +518,8 @@ class AdminPage(QWidget):
             phone = q.value(3) or ""
             role = q.value(4) or ""
             max_books = int(q.value(5) or 0)
+            if role == 'admin':
+                max_books = 0
             is_active = int(q.value(6) or 0)
 
             self.users_table.setItem(row, 0, QTableWidgetItem(str(user_id)))
@@ -562,6 +545,9 @@ class AdminPage(QWidget):
             edit_btn = QPushButton("Edit")
             edit_btn.setObjectName("btn_edit")
             edit_btn.clicked.connect(lambda _, uid=user_id: self.edit_user(uid))
+            if role == 'admin':
+                edit_btn.setEnabled(False)
+
 
             delete_btn = QPushButton("Delete")
             delete_btn.setObjectName("btn_delete")
@@ -628,7 +614,7 @@ class AdminPage(QWidget):
             INSERT INTO Users (name, email, phone, password, role, is_active)
             VALUES (?, ?, ?, ?, ?, ?)
         """)
-        for v in (name, email, phone, pw, role, 1):  # is_active always true
+        for v in (name, email, phone, pw, role, 1):  
             q.addBindValue(v)
 
         if q.exec():
@@ -667,7 +653,6 @@ class AdminPage(QWidget):
             QMessageBox.warning(self, "Error", f"Failed to delete: {q.lastError().text()}")
 
     def edit_user(self, user_id):
-        # find row
         row = None
         for r in range(self.users_table.rowCount()):
             it = self.users_table.item(r, 0)
@@ -677,7 +662,6 @@ class AdminPage(QWidget):
         if row is None:
             return
 
-        # Actions now at col 7
         action_widget = self.users_table.cellWidget(row, 7)
         if not isinstance(action_widget, QWidget):
             return
@@ -690,7 +674,6 @@ class AdminPage(QWidget):
         is_confirm = edit_btn.text() == "Confirm"
 
         if not is_confirm:
-            # enter edit mode for Name, Email, Phone, Max Books
             for c in (1, 2, 3, 5):
                 it = self.users_table.item(row, c)
                 if it:
@@ -702,7 +685,6 @@ class AdminPage(QWidget):
                 del_btn.setEnabled(False)
             return
 
-        # confirm: read & validate
         name = self.users_table.item(row, 1).text().strip()
         email = self.users_table.item(row, 2).text().strip()
         phone = self.users_table.item(row, 3).text().strip()
@@ -731,7 +713,6 @@ class AdminPage(QWidget):
             QMessageBox.warning(self, "Error", f"Failed to update: {q.lastError().text()}")
             return
 
-        # exit edit mode
         for c in (1, 2, 3, 5):
             it = self.users_table.item(row, c)
             if it:
@@ -786,7 +767,6 @@ class AdminPage(QWidget):
             self.issue_books_table.setItem(row, 4, QTableWidgetItem(year))
             self.issue_books_table.setItem(row, 5, QTableWidgetItem(str(avail)))
 
-            # Actions cell
             action_widget = QWidget()
             action_layout = QHBoxLayout(action_widget)
             action_layout.setContentsMargins(0, 0, 0, 0)
@@ -797,11 +777,10 @@ class AdminPage(QWidget):
                 issue_btn.clicked.connect(lambda _, bid=book_id: self.issue_book(bid))
                 action_layout.addWidget(issue_btn)
             else:
-                # no button when out of stock; optional label to indicate state
                 unavailable = QLabel("Unavailable")
                 action_layout.addWidget(unavailable)
 
-            self.issue_books_table.setCellWidget(row, 6, action_widget)  # single composite widget per cell
+            self.issue_books_table.setCellWidget(row, 6, action_widget)  
             row += 1
 
         self.issue_books_table.resizeColumnsToContents()
@@ -812,7 +791,7 @@ class AdminPage(QWidget):
             QMessageBox.warning(self, "Invalid", "Enter a user email first.")
             return
 
-        # 1) Fetch user (id, active, max_books)
+        
         q = QSqlQuery()
         q.prepare("SELECT user_id, is_active, max_books FROM Users WHERE email = ?")
         q.addBindValue(email)
@@ -827,7 +806,6 @@ class AdminPage(QWidget):
             QMessageBox.warning(self, "Inactive", "User account is not active.")
             return
 
-        # 2) Count current issued loans for user
         q2 = QSqlQuery()
         q2.prepare("SELECT COUNT(*) FROM Transactions WHERE user_id=? AND status='Issued'")
         q2.addBindValue(user_id)
@@ -839,7 +817,6 @@ class AdminPage(QWidget):
             QMessageBox.warning(self, "Limit reached", f"User already has {active_loans}/{max_books} active loans.")
             return
 
-        # 3) Check availability
         q3 = QSqlQuery()
         q3.prepare("SELECT available_copies FROM Books WHERE book_id=?")
         q3.addBindValue(book_id)
@@ -851,13 +828,12 @@ class AdminPage(QWidget):
             QMessageBox.warning(self, "Unavailable", "No copies available to issue.")
             return
 
-        # 4) Compute dates
+
         today = QDate.currentDate()
-        due = today.addDays(7)  # 2-week loan
+        due = today.addDays(7)  
         today_str = today.toString("yyyy-MM-dd")
         due_str = due.toString("yyyy-MM-dd")
 
-        # 5) Insert transaction
         q4 = QSqlQuery()
         q4.prepare("""
             INSERT INTO Transactions (user_id, book_id, issue_date, due_date, status)
@@ -869,7 +845,6 @@ class AdminPage(QWidget):
             QMessageBox.warning(self, "Error", f"Failed to create transaction: {q4.lastError().text()}")
             return
 
-        # 6) Decrement availability
         q5 = QSqlQuery()
         q5.prepare("UPDATE Books SET available_copies = available_copies - 1 WHERE book_id=?")
         q5.addBindValue(book_id)
@@ -877,7 +852,6 @@ class AdminPage(QWidget):
             QMessageBox.warning(self, "Warning", f"Issued, but failed to update inventory: {q5.lastError().text()}")
 
         QMessageBox.information(self, "Issued", f"Issued to {email} until {due_str}.")
-        # Refresh table
         self.load_issue_books()
 
     def load_pending_requests(self):
