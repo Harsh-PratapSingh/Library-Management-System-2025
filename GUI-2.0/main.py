@@ -28,11 +28,10 @@ class MainWindow(QMainWindow):
         db.open()
 
         self.setWindowTitle("Library Management System")
-
         # init_db()
         # seed_data() 
 
-        self.setFixedSize(QSize(1242, 770))
+        # self.setFixedSize(QSize(1242, 770))
         
         self.stacked_layout = QStackedLayout()
         
