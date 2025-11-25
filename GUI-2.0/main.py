@@ -40,6 +40,7 @@ class MainWindow(QMainWindow):
         self.user_page = UserPage()
         self.admin_page = AdminPage()
         
+        
         self.stacked_layout.addWidget(self.auth_page)
         self.stacked_layout.addWidget(self.user_page)
         self.stacked_layout.addWidget(self.admin_page)
@@ -50,7 +51,12 @@ class MainWindow(QMainWindow):
         
         self.stacked_layout.setCurrentIndex(0)
 
+        self.user_page.go_back.connect(lambda: self.stacked_layout.setCurrentIndex(0))
+        self.admin_page.go_back.connect(lambda: self.stacked_layout.setCurrentIndex(0))
+
     def open_page(self, role):
+        if role == 'auth':   
+            self.stacked_layout.setCurrentIndex(0)
         if role == 'user':   
             self.stacked_layout.setCurrentIndex(1)
             self.user_page.user_id = self.auth_page.user_id

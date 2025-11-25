@@ -8,13 +8,26 @@ from PyQt6.QtCore import QDate
 from PyQt6.QtSql import QSqlQuery
 from PyQt6.QtGui import QStandardItemModel, QStandardItem
 from PyQt6.QtCore import Qt
+from PyQt6.QtCore import pyqtSignal 
 
 class AdminPage(QWidget):
+
+    go_back = pyqtSignal() 
+
     def __init__(self):
         super().__init__()
 
         self.tab_widget = QTabWidget(self)
         root_layout = QVBoxLayout(self)
+
+        # back-button row
+        nav_row = QHBoxLayout()
+        nav_row.addStretch()
+        back_btn = QPushButton("Back")
+        back_btn.clicked.connect(self.go_back.emit)   # emit the string-less signal
+        nav_row.addWidget(back_btn)
+        root_layout.addLayout(nav_row)
+
         root_layout.addWidget(self.tab_widget)
 
         dashboard_tab = QWidget()

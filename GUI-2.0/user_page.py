@@ -3,12 +3,24 @@ from PyQt6.QtGui import QStandardItemModel, QStandardItem
 from PyQt6.QtCore import Qt
 from PyQt6.QtSql import QSqlDatabase, QSqlQuery
 from datetime import datetime, timedelta
+from PyQt6.QtCore import pyqtSignal 
 
 class UserPage(QWidget):
+
+    go_back = pyqtSignal()                  
+
     def __init__(self, user_id=None):
         super().__init__()
         self.user_id = user_id
         layout = QVBoxLayout(self)
+
+        # back-button row
+        nav_row = QHBoxLayout()
+        nav_row.addStretch()
+        back_btn = QPushButton("Back")
+        back_btn.clicked.connect(self.go_back.emit)   # emit the string-less signal
+        nav_row.addWidget(back_btn)
+        layout.addLayout(nav_row)
         
         # Tab system for user features
         self.tab_widget = QTabWidget()
@@ -119,6 +131,7 @@ class UserPage(QWidget):
         # layout.addStretch()
 
         self.perform_search()
+        
 
     def handle_select_toggle(self):
         if self.toggle_btn.text() == "Select All":
